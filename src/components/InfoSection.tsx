@@ -8,20 +8,27 @@ import { formatTabs } from '../utils'
 const InfoSection = ({ currentTab }: IInfoSectionProps) => {
     const handleClick = () => {}
     return (
-        <div className='flex flex-row px-8 max-h-16 py-4 border-b justify-between'>
-            <div className='flex flex-row gap-4'>
+        <div className="flex flex-row px-8 h-20 border-b border-clinic-line bg-white/80 justify-between items-center">
+            <div className="flex flex-row gap-4 items-center">
                 <span>
-                    <BsPersonFill className='text-blue-700 text-2xl'/>
+                    <BsPersonFill className="text-clinic-blue text-2xl" />
                 </span>
-                <h3 className='font-bold text-xl capitalize'>{ formatTabs(currentTab).substring(1) }</h3>
+                <div>
+                    <p className="text-xs font-semibold uppercase text-clinic-muted">
+                        Workspace
+                    </p>
+                    <h3 className="font-extrabold text-xl capitalize text-clinic-ink">
+                        {formatTabs(currentTab).substring(1)}
+                    </h3>
+                </div>
             </div>
 
-            <div className='flex flex-row gap-5'>
+            <div className="flex flex-row gap-3 items-center">
                 <Searchbar />
-                <ActionButton action='add' onClick={ handleClick }/>
-                <div className='flex h-8 w-8 bg-white items-center justify-center relative rounded-full'>
-                    <BiBell className='text-gray-300'/> 
-                    <div className='absolute h-2 w-2 rounded-full bg-red-600 top-0 right-0'/>
+                <ActionButton action="add" onClick={handleClick} />
+                <div className="flex h-9 w-9 border border-clinic-line bg-white items-center justify-center relative rounded-md">
+                    <BiBell className="text-clinic-muted" />
+                    <div className="absolute h-2 w-2 rounded-full bg-rose-500 top-2 right-2" />
                 </div>
             </div>
         </div>

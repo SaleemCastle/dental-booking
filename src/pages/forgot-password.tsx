@@ -19,10 +19,10 @@ const ForgotPassword = () => {
     })
 
     const [email, setEmail] = useState('')
-    const [errors, setErrors] = useState({})
-    const [status, setStatus] = useState(null)
+    const [errors, setErrors] = useState<AuthValidationErrors>({})
+    const [status, setStatus] = useState<string | null>(null)
 
-    const submitForm = event => {
+    const submitForm = (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault()
 
         forgotPassword({ email, setErrors, setStatus })
@@ -48,7 +48,9 @@ const ForgotPassword = () => {
                 <form onSubmit={submitForm}>
                     {/* Email Address */}
                     <div>
-                        <Label htmlFor="email" className=''>Email</Label>
+                        <Label htmlFor="email" className="">
+                            Email
+                        </Label>
                         <Input
                             id="email"
                             type="email"
@@ -64,7 +66,7 @@ const ForgotPassword = () => {
                     </div>
 
                     <div className="flex items-center justify-end mt-4">
-                        <Button type='button' className=''>Email Password Reset Link</Button>
+                        <Button>Email Password Reset Link</Button>
                     </div>
                 </form>
             </AuthCard>

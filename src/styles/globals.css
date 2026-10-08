@@ -1,0 +1,23 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+:root {
+    --clinic-ink: #172033;
+    --clinic-muted: #6b7688;
+    --clinic-line: #e7edf5;
+    --clinic-canvas: #f5f8fc;
+    --clinic-blue: #2f5bff;
+}
+
+html,
+body {
+    background: var(--clinic-canvas);
+    color: var(--clinic-ink);
+}
+
+* {
+    letter-spacing: 0;
+}
+
+::selection {
+    background: rgba(47, 91, 255, 0.16);
+}

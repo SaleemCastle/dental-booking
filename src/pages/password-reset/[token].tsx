@@ -1,9 +1,7 @@
-'use'
-import React from 'react'
-
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/router'
 import Link from 'next/link'
+import React from 'react'
 import ApplicationLogo from '../../components/ApplicationLogo'
 import AuthCard from '../../components/AuthCard'
 import AuthSessionStatus from '../../components/AuthSessionStatus'
@@ -22,10 +20,10 @@ const PasswordReset = () => {
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [passwordConfirmation, setPasswordConfirmation] = useState('')
-    const [errors, setErrors] = useState([])
-    const [status, setStatus] = useState(null)
+    const [errors, setErrors] = useState<AuthValidationErrors>({})
+    const [status, setStatus] = useState<string | null>(null)
 
-    const submitForm = event => {
+    const submitForm = (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault()
 
         resetPassword({
@@ -38,8 +36,9 @@ const PasswordReset = () => {
     }
 
     useEffect(() => {
-        // @ts-expect-error
-        setEmail(router.query.email || '')
+        const queryEmail = router.query.email
+
+        setEmail(typeof queryEmail === 'string' ? queryEmail : '')
     }, [router.query.email])
 
     return (
@@ -56,24 +55,28 @@ const PasswordReset = () => {
                 <form onSubmit={submitForm}>
                     {/* Email Address */}
                     <div>
-                        <Label htmlFor="email" className=''>Email</Label>
+                        <Label htmlFor="email" className="">
+                            Email
+                        </Label>
 
                         <Input
                             id="email"
                             type="email"
-                            value={ email }
+                            value={email}
                             className="block mt-1 w-full"
                             onChange={event => setEmail(event.target.value)}
                             required
                             autoFocus
                         />
 
-                        <InputError messages={ errors.email } className="mt-2" />
+                        <InputError messages={errors.email} className="mt-2" />
                     </div>
 
                     {/* Password */}
                     <div className="mt-4">
-                        <Label htmlFor="password" className=''>Password</Label>
+                        <Label htmlFor="password" className="">
+                            Password
+                        </Label>
                         <Input
                             id="password"
                             type="password"
@@ -91,7 +94,7 @@ const PasswordReset = () => {
 
                     {/* Confirm Password */}
                     <div className="mt-4">
-                        <Label htmlFor="passwordConfirmation" className=''>
+                        <Label htmlFor="passwordConfirmation" className="">
                             Confirm Password
                         </Label>
 
