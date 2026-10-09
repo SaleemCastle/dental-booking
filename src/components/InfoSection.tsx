@@ -3,7 +3,7 @@ import { BsPersonFill } from 'react-icons/bs'
 import { BiBell } from 'react-icons/bi'
 import ActionButton from './ActionButton'
 import Searchbar from './Searchbar'
-import { formatTabs } from '../utils'
+import { formatModuleLabel } from '../utils'
 
 const InfoSection = ({ currentTab }: IInfoSectionProps) => {
     const handleClick = () => {}
@@ -18,7 +18,7 @@ const InfoSection = ({ currentTab }: IInfoSectionProps) => {
                         Workspace
                     </p>
                     <h3 className="font-extrabold text-xl capitalize text-clinic-ink">
-                        {formatTabs(currentTab).substring(1)}
+                        {formatModuleLabel(currentTab)}
                     </h3>
                 </div>
             </div>
