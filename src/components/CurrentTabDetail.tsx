@@ -3,7 +3,7 @@ import { SlArrowRight } from 'react-icons/sl'
 import CurrentTabDetailActionBox from './CurrentTabDetailActionBox'
 import { useSelector } from 'react-redux'
 
-import { Tabs, patientDataHeadings } from '../Constants'
+import { patientDataHeadings } from '../Constants'
 import { AppState } from '../store/store'
 import { Listbox, Transition } from '@headlessui/react'
 import { BsCheck, BsChevronCompactDown } from 'react-icons/bs'
@@ -80,7 +80,7 @@ const CurrentTabDetail = ({ currentTab }: { currentTab: string }) => {
     const renderContent = useCallback(
         (tab: string) => {
             switch (tab) {
-                case Tabs.PatientList.toLowerCase():
+                case 'patient_list':
                     return (
                         <div className="flex flex-row px-8 h-16 border-b border-clinic-line bg-white justify-between">
                             <div className="flex flex-row gap-6 items-center">
@@ -123,10 +123,7 @@ const CurrentTabDetail = ({ currentTab }: { currentTab: string }) => {
                         <div className="flex flex-row px-8 h-16 border-b border-clinic-line bg-white justify-between">
                             <div className="flex flex-row gap-6 items-center">
                                 <h3 className="capitalize text-clinic-blue font-extrabold">
-                                    {currentTab
-                                        .substring(1)
-                                        .split('_')
-                                        .join(' ')}
+                                    {currentTab.split('_').join(' ')}
                                 </h3>
                                 <span>
                                     <SlArrowRight className="text-clinic-muted" />
@@ -154,13 +151,7 @@ const CurrentTabDetail = ({ currentTab }: { currentTab: string }) => {
         },
         [currentTab, patientListCount],
     )
-    return (
-        <>
-            {renderContent(
-                currentTab.substring(1).split('_').join(' ').toLowerCase(),
-            )}
-        </>
-    )
+    return <>{renderContent(currentTab)}</>
 }
 
 export default CurrentTabDetail

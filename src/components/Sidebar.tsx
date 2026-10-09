@@ -2,9 +2,8 @@ import React, { useState } from 'react'
 import Image from 'next/image'
 import { RiMenuFoldFill } from 'react-icons/ri'
 import Link from 'next/link'
-import { useRouter } from 'next/router'
 import { BsFillCalendar3EventFill, BsPersonFill } from 'react-icons/bs'
-import { Tabs, sidebarTabs } from '../Constants'
+import { Tabs } from '../Constants'
 import { AiOutlineMessage } from 'react-icons/ai'
 import { IoSettings } from 'react-icons/io5'
 import { MdDashboard, MdPayment } from 'react-icons/md'
@@ -15,6 +14,7 @@ import {
     getAuthUserDisplayName,
     getAuthUserEmail,
 } from '../lib/auth-session'
+import { AppModule, NavigationModule } from '../lib/permissions'
 
 const getIcons = (tab: Tabs, active: boolean) => {
     const iconClass = `text-lg ${
@@ -25,7 +25,7 @@ const getIcons = (tab: Tabs, active: boolean) => {
             return <BsFillCalendar3EventFill className={iconClass} />
         case Tabs.Messages:
             return <AiOutlineMessage className={iconClass} />
-        case Tabs.Overview:
+        case Tabs.Dashboard:
             return <MdDashboard className={iconClass} />
         case Tabs.PatientList:
             return <BsPersonFill className={iconClass} />
@@ -39,12 +39,14 @@ const getIcons = (tab: Tabs, active: boolean) => {
 const Sidebar = ({
     activeTab,
     setActiveTab,
+    modules,
     user,
     isLoggingOut = false,
     onLogout,
 }: {
-    activeTab: string
-    setActiveTab: (tab: string) => void
+    activeTab: AppModule
+    setActiveTab: (tab: AppModule) => void
+    modules: NavigationModule[]
     user?: AuthUser | null
     isLoggingOut?: boolean
     onLogout?: () => void
@@ -84,16 +86,12 @@ const Sidebar = ({
                     </p>
                 </div>
                 <nav className="mt-5 flex flex-col gap-1 px-3">
-                    {sidebarTabs.map((tab, index) => {
-                        const isTwoWordsOrMore = tab.split(' ').length > 1
-                        const link = isTwoWordsOrMore
-                            ? tab.split(' ').join('_').toLowerCase()
-                            : tab.toLowerCase()
-                        const isCurrentTab = activeTab === `#${link}`
+                    {modules.map(module => {
+                        const isCurrentTab = activeTab === module.id
 
                         return (
                             <Transition
-                                key={index}
+                                key={module.id}
                                 show={true}
                                 enter="transition-opacity duration-75"
                                 enterFrom="opacity-0"
@@ -103,20 +101,16 @@ const Sidebar = ({
                                 leaveTo="opacity-0">
                                 <Link
                                     onClick={() => {
-                                        setActiveTab(
-                                            '#' +
-                                                (link as string).toLowerCase(),
-                                        )
+                                        setActiveTab(module.id)
                                     }}
-                                    href={`#${link}`}
-                                    key={index}
+                                    href={module.href}
                                     className={`rounded-md px-3 py-3 flex flex-row items-center gap-3 transition-colors ${
                                         isCurrentTab
                                             ? 'bg-clinic-sky text-clinic-blue'
                                             : 'text-clinic-muted hover:bg-clinic-canvas'
                                     }`}>
                                     <span>
-                                        {getIcons(tab as Tabs, isCurrentTab)}
+                                        {getIcons(module.label, isCurrentTab)}
                                     </span>
                                     <h3
                                         className={`text-sm font-semibold ${
@@ -124,7 +118,7 @@ const Sidebar = ({
                                                 ? 'text-clinic-blue'
                                                 : 'text-clinic-ink'
                                         }`}>
-                                        {tab}
+                                        {module.label}
                                     </h3>
                                 </Link>
                             </Transition>

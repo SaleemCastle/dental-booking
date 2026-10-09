@@ -5,9 +5,10 @@
     "scripts": {
         "dev": "next dev",
         "build": "next build",
-        "test": "npm run test:api && npm run test:auth-session",
+        "test": "npm run test:api && npm run test:auth-session && npm run test:permissions",
         "test:api": "node tests/api-contract.test.cjs",
         "test:auth-session": "node tests/auth-session.test.cjs",
+        "test:permissions": "node tests/permissions.test.cjs",
         "start": "next start",
         "lint": "next lint",
         "lint:fix": "next lint --fix"
