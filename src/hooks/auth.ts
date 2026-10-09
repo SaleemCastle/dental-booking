@@ -9,6 +9,7 @@ import {
     unauthorizedSessionEvent,
 } from '../lib/api'
 import { useAuthSession } from '../context/AuthSessionContext'
+import { getAuthRouteRedirect } from '../lib/auth-session'
 
 interface IAuthProps {
     middleware?: string
@@ -94,6 +95,7 @@ export const useAuth = ({
         try {
             await apiClient.post('/login', props)
             await refreshSession()
+            await router.push(redirectIfAuthenticated ?? '/')
         } catch (error) {
             handleValidationError(error, setErrors)
         }
@@ -189,45 +191,19 @@ export const useAuth = ({
     }, [clearSession, middleware, router])
 
     useEffect(() => {
-        if (isLoading) {
-            return
-        }
+        const redirectTo = getAuthRouteRedirect({
+            middleware,
+            redirectIfAuthenticated,
+            currentPath: window.location.pathname,
+            status,
+            user,
+            errorStatusCode: error?.statusCode,
+        })
 
-        if (middleware === 'guest' && redirectIfAuthenticated && user) {
-            void router.push(redirectIfAuthenticated)
-            return
+        if (redirectTo) {
+            void router.push(redirectTo)
         }
-
-        if (
-            window.location.pathname === '/verify-email' &&
-            user?.email_verified_at
-        ) {
-            void router.push(redirectIfAuthenticated)
-            return
-        }
-
-        if (middleware === 'auth' && isUnauthenticated) {
-            if (
-                error?.statusCode === 409 &&
-                window.location.pathname !== '/verify-email'
-            ) {
-                void router.push('/verify-email')
-                return
-            }
-
-            if (error?.statusCode !== 409) {
-                void router.push('/login')
-            }
-        }
-    }, [
-        error,
-        isLoading,
-        isUnauthenticated,
-        middleware,
-        redirectIfAuthenticated,
-        router,
-        user,
-    ])
+    }, [error, middleware, redirectIfAuthenticated, router, status, user])
 
     return {
         user,
