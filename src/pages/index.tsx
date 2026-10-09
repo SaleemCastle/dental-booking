@@ -8,21 +8,22 @@ import { useDispatch } from 'react-redux'
 import { setPatients } from '../store/reducers/patients/patientSlice'
 import { getPatients } from '../services/patients'
 import { useAuth } from '../hooks/auth'
+import { canRunProtectedApi } from '../lib/auth-session'
 
 const Home: NextPage = () => {
     const [currentTab, setCurrentTab] = useState('#overview')
     const dispatch = useDispatch()
-    const { status, isAuthenticated } = useAuth({ middleware: 'auth' })
+    const { status } = useAuth({ middleware: 'auth' })
 
     useEffect(() => {
-        if (!isAuthenticated) {
+        if (!canRunProtectedApi(status)) {
             return
         }
 
         getPatients()
             .then(patientsResponse => dispatch(setPatients(patientsResponse)))
             .catch(() => undefined)
-    }, [dispatch, isAuthenticated])
+    }, [dispatch, status])
 
     if (status !== 'authenticated') {
         return (
