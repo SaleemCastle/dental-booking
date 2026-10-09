@@ -15,3 +15,7 @@ interface Patient {
     created_at: string
     updated_at: string
 }
+
+type AuthValidationErrors = Partial<
+    Record<'name' | 'email' | 'password' | 'password_confirmation', string[]>
+>

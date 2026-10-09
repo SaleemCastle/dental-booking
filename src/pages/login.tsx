@@ -1,9 +1,7 @@
-import React from 'react'
-
-
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/router'
 import Link from 'next/link'
+import React from 'react'
 import ApplicationLogo from '../components/ApplicationLogo'
 import AuthCard from '../components/AuthCard'
 import AuthSessionStatus from '../components/AuthSessionStatus'
@@ -19,24 +17,29 @@ const Login = () => {
 
     const { login } = useAuth({
         middleware: 'guest',
-        redirectIfAuthenticated: '/dashboard',
+        redirectIfAuthenticated: '/',
     })
 
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [shouldRemember, setShouldRemember] = useState(false)
-    const [errors, setErrors] = useState([])
-    const [status, setStatus] = useState(null)
+    const [errors, setErrors] = useState<AuthValidationErrors>({})
+    const [status, setStatus] = useState<string | null>(null)
 
     useEffect(() => {
-        if (router.query.reset?.length > 0 && errors.length === 0) {
-            setStatus(atob(router.query.reset))
+        const resetStatus = router.query.reset
+
+        if (
+            typeof resetStatus === 'string' &&
+            Object.keys(errors).length === 0
+        ) {
+            setStatus(atob(resetStatus))
         } else {
             setStatus(null)
         }
-    })
+    }, [errors, router.query.reset])
 
-    const submitForm = async event => {
+    const submitForm = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault()
 
         login({
@@ -62,7 +65,9 @@ const Login = () => {
                 <form onSubmit={submitForm}>
                     {/* Email Address */}
                     <div>
-                        <Label htmlFor="email" className=''>Email</Label>
+                        <Label htmlFor="email" className="">
+                            Email
+                        </Label>
 
                         <Input
                             id="email"
@@ -79,7 +84,9 @@ const Login = () => {
 
                     {/* Password */}
                     <div className="mt-4">
-                        <Label htmlFor="password" className=''>Password</Label>
+                        <Label htmlFor="password" className="">
+                            Password
+                        </Label>
 
                         <Input
                             id="password"
@@ -125,7 +132,7 @@ const Login = () => {
                             Forgot your password?
                         </Link>
 
-                        <Button type='button' className="ml-3">Login</Button>
+                        <Button className="ml-3">Login</Button>
                     </div>
                 </form>
             </AuthCard>

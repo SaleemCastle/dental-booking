@@ -1,8 +1,6 @@
 import Link from 'next/link'
-import React from 'react'
-
-
 import { useState } from 'react'
+import React from 'react'
 import ApplicationLogo from '../components/ApplicationLogo'
 import AuthCard from '../components/AuthCard'
 import Button from '../components/Button'
@@ -15,16 +13,16 @@ import { useAuth } from '../hooks/auth'
 const Register = () => {
     const { register } = useAuth({
         middleware: 'guest',
-        redirectIfAuthenticated: '/dashboard',
+        redirectIfAuthenticated: '/',
     })
 
     const [name, setName] = useState('')
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [passwordConfirmation, setPasswordConfirmation] = useState('')
-    const [errors, setErrors] = useState([])
+    const [errors, setErrors] = useState<AuthValidationErrors>({})
 
-    const submitForm = event => {
+    const submitForm = (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault()
 
         register({
@@ -47,7 +45,9 @@ const Register = () => {
                 <form onSubmit={submitForm}>
                     {/* Name */}
                     <div>
-                        <Label htmlFor="name" className=''>Name</Label>
+                        <Label htmlFor="name" className="">
+                            Name
+                        </Label>
 
                         <Input
                             id="name"
@@ -64,7 +64,9 @@ const Register = () => {
 
                     {/* Email Address */}
                     <div className="mt-4">
-                        <Label htmlFor="email" className=''>Email</Label>
+                        <Label htmlFor="email" className="">
+                            Email
+                        </Label>
 
                         <Input
                             id="email"
@@ -80,7 +82,9 @@ const Register = () => {
 
                     {/* Password */}
                     <div className="mt-4">
-                        <Label htmlFor="password" className=''>Password</Label>
+                        <Label htmlFor="password" className="">
+                            Password
+                        </Label>
 
                         <Input
                             id="password"
@@ -100,7 +104,7 @@ const Register = () => {
 
                     {/* Confirm Password */}
                     <div className="mt-4">
-                        <Label htmlFor="passwordConfirmation" className=''>
+                        <Label htmlFor="passwordConfirmation" className="">
                             Confirm Password
                         </Label>
 
@@ -128,7 +132,7 @@ const Register = () => {
                             Already registered?
                         </Link>
 
-                        <Button type='button' className="ml-4">Register</Button>
+                        <Button className="ml-4">Register</Button>
                     </div>
                 </form>
             </AuthCard>
