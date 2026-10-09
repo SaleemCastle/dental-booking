@@ -17,8 +17,11 @@ new Function('exports', 'module', compiled)(moduleRef.exports, moduleRef)
 
 const {
     canRunProtectedApi,
+    getAuthUserDisplayName,
+    getAuthUserEmail,
     getAuthRouteRedirect,
     resolveSessionStatus,
+    unwrapAuthUser,
 } = moduleRef.exports
 
 assert.equal(resolveSessionStatus(undefined), 'loading')
@@ -32,6 +35,24 @@ assert.equal(
 assert.equal(canRunProtectedApi('loading'), false)
 assert.equal(canRunProtectedApi('unauthenticated'), false)
 assert.equal(canRunProtectedApi('authenticated'), true)
+
+assert.deepEqual(unwrapAuthUser({ user: { id: 1, name: 'Jane Doe' } }), {
+    id: 1,
+    name: 'Jane Doe',
+})
+assert.equal(getAuthUserDisplayName({ name: 'Jane Doe' }), 'Jane Doe')
+assert.equal(
+    getAuthUserDisplayName({ firstName: 'Jane', lastName: 'Doe' }),
+    'Jane Doe',
+)
+assert.equal(
+    getAuthUserDisplayName({ email: 'jane@example.com' }),
+    'jane@example.com',
+)
+assert.equal(
+    getAuthUserEmail({ email: 'jane@example.com' }),
+    'jane@example.com',
+)
 
 assert.equal(
     getAuthRouteRedirect({
@@ -85,6 +106,20 @@ assert.equal(
         user: { id: 1, email_verified_at: '2026-10-09T12:00:00Z' },
     }),
     '/',
+)
+
+const postLogoutStatus = resolveSessionStatus(null)
+
+assert.equal(postLogoutStatus, 'unauthenticated')
+assert.equal(canRunProtectedApi(postLogoutStatus), false)
+assert.equal(
+    getAuthRouteRedirect({
+        middleware: 'auth',
+        currentPath: '/dashboard',
+        status: postLogoutStatus,
+        user: null,
+    }),
+    '/login',
 )
 
 console.log('Auth session state tests passed.')
