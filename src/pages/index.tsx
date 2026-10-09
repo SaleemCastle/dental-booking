@@ -12,8 +12,18 @@ import { canRunProtectedApi } from '../lib/auth-session'
 
 const Home: NextPage = () => {
     const [currentTab, setCurrentTab] = useState('#overview')
+    const [isLoggingOut, setIsLoggingOut] = useState(false)
     const dispatch = useDispatch()
-    const { status } = useAuth({ middleware: 'auth' })
+    const { status, user, logout } = useAuth({ middleware: 'auth' })
+
+    const handleLogout = async () => {
+        if (isLoggingOut) {
+            return
+        }
+
+        setIsLoggingOut(true)
+        await logout()
+    }
 
     useEffect(() => {
         if (!canRunProtectedApi(status)) {
@@ -40,7 +50,13 @@ const Home: NextPage = () => {
             </Head>
 
             <div className="relative w-full min-h-screen flex flex-row bg-clinic-canvas">
-                <Sidebar activeTab={currentTab} setActiveTab={setCurrentTab} />
+                <Sidebar
+                    activeTab={currentTab}
+                    setActiveTab={setCurrentTab}
+                    user={user}
+                    isLoggingOut={isLoggingOut}
+                    onLogout={handleLogout}
+                />
                 <MainArea currentTab={currentTab} />
             </div>
         </>

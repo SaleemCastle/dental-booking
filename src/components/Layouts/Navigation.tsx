@@ -18,6 +18,18 @@ const Navigation = ({ user }) => {
     const { logout } = useAuth()
 
     const [open, setOpen] = useState(false)
+    const [isLoggingOut, setIsLoggingOut] = useState(false)
+    const displayName = user?.name ?? user?.email ?? 'Account'
+    const displayEmail = user?.email
+
+    const handleLogout = async () => {
+        if (isLoggingOut) {
+            return
+        }
+
+        setIsLoggingOut(true)
+        await logout()
+    }
 
     return (
         <nav className="bg-white border-b border-gray-100">
@@ -49,7 +61,7 @@ const Navigation = ({ user }) => {
                             width="48"
                             trigger={
                                 <button className="flex items-center text-sm font-medium text-gray-500 hover:text-gray-700 focus:outline-none transition duration-150 ease-in-out">
-                                    <div>{ user?.name }</div>
+                                    <div>{displayName}</div>
 
                                     <div className="ml-1">
                                         <svg
@@ -65,9 +77,22 @@ const Navigation = ({ user }) => {
                                     </div>
                                 </button>
                             }>
+                            <div className="border-b border-gray-100 px-4 py-3">
+                                <div className="text-sm font-medium text-gray-900">
+                                    {displayName}
+                                </div>
+                                {displayEmail && (
+                                    <div className="mt-1 truncate text-xs text-gray-500">
+                                        {displayEmail}
+                                    </div>
+                                )}
+                            </div>
+
                             {/* Authentication */}
-                            <DropdownButton onClick={ logout }>
-                                Logout
+                            <DropdownButton
+                                disabled={isLoggingOut}
+                                onClick={handleLogout}>
+                                {isLoggingOut ? 'Logging out...' : 'Logout'}
                             </DropdownButton>
                         </Dropdown>
                     </div>
@@ -137,18 +162,20 @@ const Navigation = ({ user }) => {
 
                             <div className="ml-3">
                                 <div className="font-medium text-base text-gray-800">
-                                    {user?.name}
+                                    {displayName}
                                 </div>
-                                <div className="font-medium text-sm text-gray-500">
-                                    {user?.email}
-                                </div>
+                                {displayEmail && (
+                                    <div className="font-medium text-sm text-gray-500">
+                                        {displayEmail}
+                                    </div>
+                                )}
                             </div>
                         </div>
 
                         <div className="mt-3 space-y-1">
                             {/* Authentication */}
-                            <ResponsiveNavButton onClick={logout}>
-                                Logout
+                            <ResponsiveNavButton onClick={handleLogout}>
+                                {isLoggingOut ? 'Logging out...' : 'Logout'}
                             </ResponsiveNavButton>
                         </div>
                     </div>

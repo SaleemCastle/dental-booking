@@ -7,6 +7,10 @@ export interface AuthUser {
     [key: string]: unknown
 }
 
+interface WrappedAuthUser {
+    user?: AuthUser
+}
+
 interface AuthRouteDecisionProps {
     middleware?: string
     redirectIfAuthenticated?: string
@@ -33,6 +37,47 @@ export const resolveSessionStatus = (
 
 export const canRunProtectedApi = (status: AuthSessionStatus) =>
     status === 'authenticated'
+
+export const unwrapAuthUser = (
+    payload: AuthUser | WrappedAuthUser | null,
+): AuthUser | null => {
+    if (!payload) {
+        return null
+    }
+
+    if ('user' in payload && payload.user && typeof payload.user === 'object') {
+        return payload.user as AuthUser
+    }
+
+    return payload as AuthUser
+}
+
+export const getAuthUserDisplayName = (user: AuthUser | null) => {
+    if (!user) {
+        return 'Account'
+    }
+
+    const name = user.name ?? user.fullName
+
+    if (typeof name === 'string' && name.length > 0) {
+        return name
+    }
+
+    const firstName = typeof user.firstName === 'string' ? user.firstName : ''
+    const lastName = typeof user.lastName === 'string' ? user.lastName : ''
+    const fullName = `${firstName} ${lastName}`.trim()
+
+    if (fullName.length > 0) {
+        return fullName
+    }
+
+    return typeof user.email === 'string' && user.email.length > 0
+        ? user.email
+        : 'Account'
+}
+
+export const getAuthUserEmail = (user: AuthUser | null) =>
+    user && typeof user.email === 'string' ? user.email : null
 
 export const getAuthRouteRedirect = ({
     middleware,

@@ -11,6 +11,7 @@ import {
     AuthSessionStatus,
     AuthUser,
     resolveSessionStatus,
+    unwrapAuthUser,
 } from '../lib/auth-session'
 
 interface AuthSessionContextValue {
@@ -30,9 +31,24 @@ const AuthSessionContext = createContext<AuthSessionContextValue | undefined>(
 
 const fetchSessionUser = async () => {
     try {
-        return await apiClient.getData<AuthUser>('/api/user')
+        const user = await apiClient.getData<AuthUser>('/api/user')
+
+        return unwrapAuthUser(user)
     } catch (error) {
         throw normalizeAxiosError(error)
+    }
+}
+
+const clearBrowserSessionState = () => {
+    if (typeof window === 'undefined') {
+        return
+    }
+
+    try {
+        window.localStorage.removeItem('auth:user')
+        window.sessionStorage.removeItem('auth:user')
+    } catch {
+        // Storage may be unavailable in private browsing contexts.
     }
 }
 
@@ -49,7 +65,11 @@ export const AuthSessionProvider = ({ children }: { children: ReactNode }) => {
     const status = resolveSessionStatus(user, error)
 
     const refreshSession = useCallback(() => mutate(), [mutate])
-    const clearSession = useCallback(() => mutate(null, false), [mutate])
+    const clearSession = useCallback(() => {
+        clearBrowserSessionState()
+
+        return mutate(null, false)
+    }, [mutate])
 
     const value = useMemo<AuthSessionContextValue>(
         () => ({

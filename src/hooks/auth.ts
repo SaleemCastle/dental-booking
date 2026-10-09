@@ -153,19 +153,18 @@ export const useAuth = ({
     }
 
     const logout = useCallback(async () => {
-        if (isAuthenticated) {
+        const shouldCallBackend = isAuthenticated
+
+        await clearSession()
+
+        if (shouldCallBackend) {
             try {
                 await apiClient.post('/logout')
             } catch (error) {
-                const apiError = normalizeAxiosError(error)
-
-                if (apiError.statusCode !== 401) {
-                    throw apiError
-                }
+                normalizeAxiosError(error)
             }
         }
 
-        await clearSession()
         await router.push('/login')
     }, [clearSession, isAuthenticated, router])
 
