@@ -12,22 +12,22 @@ import { useAuth } from '../hooks/auth'
 const Home: NextPage = () => {
     const [currentTab, setCurrentTab] = useState('#overview')
     const dispatch = useDispatch()
-    const { user } = useAuth({ middleware: 'auth' })
+    const { status, isAuthenticated } = useAuth({ middleware: 'auth' })
 
     useEffect(() => {
-        if (!user) {
+        if (!isAuthenticated) {
             return
         }
 
         getPatients()
             .then(patientsResponse => dispatch(setPatients(patientsResponse)))
             .catch(() => undefined)
-    }, [dispatch, user])
+    }, [dispatch, isAuthenticated])
 
-    if (!user) {
+    if (status !== 'authenticated') {
         return (
             <div className="flex min-h-screen items-center justify-center bg-clinic-canvas text-sm font-bold text-clinic-muted">
-                Loading session...
+                {status === 'loading' ? 'Loading session...' : 'Redirecting...'}
             </div>
         )
     }

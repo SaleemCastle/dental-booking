@@ -1,4 +1,4 @@
-import axios from '../lib/axios'
+import { apiClient } from '../lib/api'
 
 export type AppointmentStatus =
     | 'scheduled'
@@ -36,52 +36,69 @@ export interface AppointmentPayload {
     notes?: string
 }
 
+interface AppointmentsResponse {
+    appointments: Appointment[]
+}
+
+interface AppointmentResponse {
+    appointment: Appointment
+}
+
+const unwrapAppointments = (data: Appointment[] | AppointmentsResponse) =>
+    Array.isArray(data) ? data : data.appointments
+
+const unwrapAppointment = (data: Appointment | AppointmentResponse) =>
+    'appointment' in data ? data.appointment : data
+
 export const getAppointments = async (date: string) => {
-    const response = await axios.get<Appointment[]>('/api/appointments', {
+    const response = await apiClient.getData<
+        Appointment[] | AppointmentsResponse
+    >('/api/appointments', {
         params: { date },
     })
 
-    return response.data
+    return unwrapAppointments(response)
 }
 
 export const createAppointment = async (payload: AppointmentPayload) => {
-    const response = await axios.post<Appointment>('/api/appointments', payload)
+    const response = await apiClient.postData<
+        Appointment | AppointmentResponse
+    >('/api/appointments', payload)
 
-    return response.data
+    return unwrapAppointment(response)
 }
 
 export const updateAppointment = async (
     appointmentId: number,
     payload: Partial<AppointmentPayload>,
 ) => {
-    const response = await axios.patch<Appointment>(
-        `/api/appointments/${appointmentId}`,
-        payload,
-    )
+    const response = await apiClient.patchData<
+        Appointment | AppointmentResponse
+    >(`/api/appointments/${appointmentId}`, payload)
 
-    return response.data
+    return unwrapAppointment(response)
 }
 
 export const checkInAppointment = async (appointmentId: number) => {
-    const response = await axios.post<Appointment>(
-        `/api/appointments/${appointmentId}/check-in`,
-    )
+    const response = await apiClient.postData<
+        Appointment | AppointmentResponse
+    >(`/api/appointments/${appointmentId}/check-in`)
 
-    return response.data
+    return unwrapAppointment(response)
 }
 
 export const completeAppointment = async (appointmentId: number) => {
-    const response = await axios.post<Appointment>(
-        `/api/appointments/${appointmentId}/complete`,
-    )
+    const response = await apiClient.postData<
+        Appointment | AppointmentResponse
+    >(`/api/appointments/${appointmentId}/complete`)
 
-    return response.data
+    return unwrapAppointment(response)
 }
 
 export const cancelAppointment = async (appointmentId: number) => {
-    const response = await axios.post<Appointment>(
-        `/api/appointments/${appointmentId}/cancel`,
-    )
+    const response = await apiClient.postData<
+        Appointment | AppointmentResponse
+    >(`/api/appointments/${appointmentId}/cancel`)
 
-    return response.data
+    return unwrapAppointment(response)
 }

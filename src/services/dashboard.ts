@@ -1,4 +1,4 @@
-import axios from '../lib/axios'
+import { apiClient } from '../lib/api'
 
 type DashboardTone = 'sky' | 'amber' | 'mint' | 'rose'
 
@@ -208,9 +208,9 @@ const normalizeDashboardSummary = (
 })
 
 export const getDashboardSummary = async () => {
-    const response = await axios.get<BackendDashboardSummary>(
+    const summary = await apiClient.getData<BackendDashboardSummary>(
         '/api/dashboard/summary',
     )
 
-    return normalizeDashboardSummary(response.data)
+    return normalizeDashboardSummary(summary)
 }
