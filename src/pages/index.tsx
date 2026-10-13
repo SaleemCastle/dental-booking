@@ -1,9 +1,10 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 
 import Head from 'next/head'
 import { useRouter } from 'next/router'
 import Sidebar from '../components/Sidebar'
 import MainArea from '../components/MainArea'
+import PatientRegistrationWizard from '../components/PatientRegistrationWizard'
 import { NextPage } from 'next'
 import { useDispatch } from 'react-redux'
 import { setPatients } from '../store/reducers/patients/patientSlice'
@@ -20,6 +21,7 @@ const Home: NextPage = () => {
     const router = useRouter()
     const [currentTab, setCurrentTab] = useState<AppModule>('dashboard')
     const [isLoggingOut, setIsLoggingOut] = useState(false)
+    const [isPatientWizardOpen, setIsPatientWizardOpen] = useState(false)
     const dispatch = useDispatch()
     const { status, user, logout } = useAuth({ middleware: 'auth' })
     const authorizedModules = useMemo(
@@ -39,6 +41,12 @@ const Home: NextPage = () => {
         await logout()
     }
 
+    const loadPatients = useCallback(() => {
+        getPatients()
+            .then(patientsResponse => dispatch(setPatients(patientsResponse)))
+            .catch(() => undefined)
+    }, [dispatch])
+
     useEffect(() => {
         if (!canRunProtectedApi(status)) {
             return
@@ -48,10 +56,8 @@ const Home: NextPage = () => {
             return
         }
 
-        getPatients()
-            .then(patientsResponse => dispatch(setPatients(patientsResponse)))
-            .catch(() => undefined)
-    }, [dispatch, status, user])
+        loadPatients()
+    }, [loadPatients, status, user])
 
     useEffect(() => {
         if (!canRunProtectedApi(status)) {
@@ -111,9 +117,17 @@ const Home: NextPage = () => {
                     onLogout={handleLogout}
                 />
                 {canAccessModuleId(user, currentTab) && (
-                    <MainArea currentTab={currentTab} />
+                    <MainArea
+                        currentTab={currentTab}
+                        onAddPatient={() => setIsPatientWizardOpen(true)}
+                    />
                 )}
             </div>
+            <PatientRegistrationWizard
+                isOpen={isPatientWizardOpen}
+                onClose={() => setIsPatientWizardOpen(false)}
+                onSuccess={loadPatients}
+            />
         </>
     )
 }

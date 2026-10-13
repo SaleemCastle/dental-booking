@@ -5,8 +5,10 @@ import ActionButton from './ActionButton'
 import Searchbar from './Searchbar'
 import { formatModuleLabel } from '../utils'
 
-const InfoSection = ({ currentTab }: IInfoSectionProps) => {
-    const handleClick = () => {}
+const InfoSection = ({
+    currentTab,
+    onAddPatient,
+}: IInfoSectionProps & { onAddPatient?: () => void }) => {
     return (
         <div className="flex flex-row px-8 h-20 border-b border-clinic-line bg-white/80 justify-between items-center">
             <div className="flex flex-row gap-4 items-center">
@@ -25,7 +27,9 @@ const InfoSection = ({ currentTab }: IInfoSectionProps) => {
 
             <div className="flex flex-row gap-3 items-center">
                 <Searchbar />
-                <ActionButton action="add" onClick={handleClick} />
+                {currentTab === 'patient_list' && onAddPatient && (
+                    <ActionButton action="add" onClick={onAddPatient} />
+                )}
                 <div className="flex h-9 w-9 border border-clinic-line bg-white items-center justify-center relative rounded-md">
                     <BiBell className="text-clinic-muted" />
                     <div className="absolute h-2 w-2 rounded-full bg-rose-500 top-2 right-2" />
