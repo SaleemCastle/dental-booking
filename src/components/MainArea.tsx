@@ -4,7 +4,13 @@ import CurrentTabDetail from './CurrentTabDetail'
 import PatientList from './PatientList'
 import OverviewDashboard from './OverviewDashboard'
 
-const MainArea = ({ currentTab }: { currentTab: string }) => {
+const MainArea = ({
+    currentTab,
+    onAddPatient,
+}: {
+    currentTab: string
+    onAddPatient?: () => void
+}) => {
     const renderTabDetailSection = (tab: string) => {
         switch (tab) {
             case 'dashboard':
@@ -15,7 +21,7 @@ const MainArea = ({ currentTab }: { currentTab: string }) => {
     }
     return (
         <main className="min-w-0 flex-1 min-h-screen bg-clinic-canvas">
-            <InfoSection currentTab={currentTab} />
+            <InfoSection currentTab={currentTab} onAddPatient={onAddPatient} />
             <CurrentTabDetail currentTab={currentTab} />
             {renderTabDetailSection(currentTab)}
         </main>
