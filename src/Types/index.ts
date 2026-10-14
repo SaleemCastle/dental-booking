@@ -1,5 +1,8 @@
 interface IInfoSectionProps {
     currentTab: string
+    patientSearch?: string
+    onPatientSearchChange?: (value: string) => void
+    onPatientSearchClear?: () => void
 }
 
 interface Patient {
@@ -14,6 +17,19 @@ interface Patient {
     notes: string
     created_at: string
     updated_at: string
+    archived?: boolean
+    isArchived?: boolean
+    is_archived?: boolean
+    archived_at?: string | null
+    archivedAt?: string | null
+    archived_by_user_id?: number | null
+    deleted_at?: string | null
+    emergency_contact_name?: string | null
+    emergency_contact_phone?: string | null
+    emergency_contact_relationship?: string | null
+    allergies?: string[]
+    medications?: string[]
+    medical_alerts?: string[]
 }
 
 type AuthValidationErrors = Partial<

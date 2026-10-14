@@ -7,6 +7,7 @@ import { patientDataHeadings } from '../Constants'
 import { AppState } from '../store/store'
 import { Listbox, Transition } from '@headlessui/react'
 import { BsCheck, BsChevronCompactDown } from 'react-icons/bs'
+import { PatientArchivedFilter } from '../services/patients'
 
 const CurrentTabDropdownFilter = () => {
     const [selectedFilter, setSelectedFilter] = useState(patientDataHeadings[0])
@@ -70,12 +71,23 @@ const CurrentTabDropdownFilter = () => {
     )
 }
 
-const CurrentTabDetail = ({ currentTab }: { currentTab: string }) => {
+const CurrentTabDetail = ({
+    currentTab,
+    patientTotal,
+    archivedPatientFilter = 'without',
+    onArchivedPatientFilterChange,
+}: {
+    currentTab: string
+    patientTotal?: number
+    archivedPatientFilter?: PatientArchivedFilter
+    onArchivedPatientFilterChange?: (value: PatientArchivedFilter) => void
+}) => {
     const handlePrint = () => {}
     const handleEdit = () => {}
     const patientListCount = useSelector(
         (state: AppState) => state.patients.patients.patients.length,
     )
+    const displayedPatientCount = patientTotal ?? patientListCount
 
     const renderContent = useCallback(
         (tab: string) => {
@@ -86,10 +98,10 @@ const CurrentTabDetail = ({ currentTab }: { currentTab: string }) => {
                             <div className="flex flex-row gap-6 items-center">
                                 <div className="flex flex-row gap-3 items-baseline">
                                     <h3 className="text-2xl text-clinic-blue font-extrabold">
-                                        {patientListCount}
+                                        {displayedPatientCount}
                                     </h3>
                                     <h3 className="font-semibold text-clinic-muted">{`patient${
-                                        patientListCount > 1 ? 's' : ''
+                                        displayedPatientCount > 1 ? 's' : ''
                                     }`}</h3>
                                 </div>
                                 <span className="h-7 w-px bg-clinic-line" />
@@ -99,6 +111,23 @@ const CurrentTabDetail = ({ currentTab }: { currentTab: string }) => {
                                 <CurrentTabDropdownFilter />
                             </div>
                             <div className="flex flex-row gap-1 items-center">
+                                <select
+                                    className="mr-2 h-[42px] rounded-md border border-clinic-line bg-white px-3 text-sm font-medium text-clinic-muted focus:border-clinic-blue focus:ring-clinic-blue/20"
+                                    value={archivedPatientFilter}
+                                    onChange={event =>
+                                        onArchivedPatientFilterChange?.(
+                                            event.target
+                                                .value as PatientArchivedFilter,
+                                        )
+                                    }>
+                                    <option value="without">
+                                        Active records
+                                    </option>
+                                    <option value="with">
+                                        Active and archived
+                                    </option>
+                                    <option value="only">Archived only</option>
+                                </select>
                                 <CurrentTabDetailActionBox
                                     icon="print"
                                     onClick={handlePrint}
@@ -149,7 +178,12 @@ const CurrentTabDetail = ({ currentTab }: { currentTab: string }) => {
                     )
             }
         },
-        [currentTab, patientListCount],
+        [
+            currentTab,
+            displayedPatientCount,
+            archivedPatientFilter,
+            onArchivedPatientFilterChange,
+        ],
     )
     return <>{renderContent(currentTab)}</>
 }

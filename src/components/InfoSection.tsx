@@ -8,6 +8,9 @@ import { formatModuleLabel } from '../utils'
 const InfoSection = ({
     currentTab,
     onAddPatient,
+    patientSearch = '',
+    onPatientSearchChange,
+    onPatientSearchClear,
 }: IInfoSectionProps & { onAddPatient?: () => void }) => {
     return (
         <div className="flex flex-row px-8 h-20 border-b border-clinic-line bg-white/80 justify-between items-center">
@@ -26,7 +29,24 @@ const InfoSection = ({
             </div>
 
             <div className="flex flex-row gap-3 items-center">
-                <Searchbar />
+                <Searchbar
+                    value={currentTab === 'patient_list' ? patientSearch : ''}
+                    placeholder={
+                        currentTab === 'patient_list'
+                            ? 'Search patients'
+                            : 'Search patients, bookings, invoices'
+                    }
+                    onChange={
+                        currentTab === 'patient_list'
+                            ? onPatientSearchChange
+                            : undefined
+                    }
+                    onClear={
+                        currentTab === 'patient_list'
+                            ? onPatientSearchClear
+                            : undefined
+                    }
+                />
                 {currentTab === 'patient_list' && onAddPatient && (
                     <ActionButton action="add" onClick={onAddPatient} />
                 )}

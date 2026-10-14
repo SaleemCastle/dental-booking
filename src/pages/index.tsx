@@ -8,20 +8,47 @@ import PatientRegistrationWizard from '../components/PatientRegistrationWizard'
 import { NextPage } from 'next'
 import { useDispatch } from 'react-redux'
 import { setPatients } from '../store/reducers/patients/patientSlice'
-import { getPatients } from '../services/patients'
+import {
+    getPatient,
+    getPatients,
+    PatientArchivedFilter,
+    PatientListParams,
+} from '../services/patients'
 import { useAuth } from '../hooks/auth'
 import { canRunProtectedApi } from '../lib/auth-session'
+import { normalizeAxiosError, PaginationMeta } from '../lib/api'
 import {
     AppModule,
     canAccessModuleId,
     getAuthorizedNavigationModules,
 } from '../lib/permissions'
 
+const patientPageSize = 8
+
 const Home: NextPage = () => {
     const router = useRouter()
     const [currentTab, setCurrentTab] = useState<AppModule>('dashboard')
     const [isLoggingOut, setIsLoggingOut] = useState(false)
     const [isPatientWizardOpen, setIsPatientWizardOpen] = useState(false)
+    const [patientSearch, setPatientSearch] = useState('')
+    const [patientPage, setPatientPage] = useState(1)
+    const [
+        archivedPatientFilter,
+        setArchivedPatientFilter,
+    ] = useState<PatientArchivedFilter>('without')
+    const [patientMeta, setPatientMeta] = useState<PaginationMeta>()
+    const [patientListState, setPatientListState] = useState({
+        isLoading: false,
+        errorMessage: '',
+    })
+    const [selectedPatientId, setSelectedPatientId] = useState<number | null>(
+        null,
+    )
+    const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null)
+    const [patientDetailState, setPatientDetailState] = useState({
+        isLoading: false,
+        errorMessage: '',
+    })
     const dispatch = useDispatch()
     const { status, user, logout } = useAuth({ middleware: 'auth' })
     const authorizedModules = useMemo(
@@ -41,11 +68,78 @@ const Home: NextPage = () => {
         await logout()
     }
 
-    const loadPatients = useCallback(() => {
-        getPatients()
-            .then(patientsResponse => dispatch(setPatients(patientsResponse)))
-            .catch(() => undefined)
-    }, [dispatch])
+    const loadPatients = useCallback(
+        async (overrides: Partial<PatientListParams> = {}) => {
+            const query = {
+                search: patientSearch,
+                page: patientPage,
+                perPage: patientPageSize,
+                archived: archivedPatientFilter,
+                ...overrides,
+            }
+
+            setPatientListState({ isLoading: true, errorMessage: '' })
+
+            try {
+                const patientsResponse = await getPatients(query)
+                dispatch(setPatients(patientsResponse))
+                setPatientMeta(patientsResponse.meta)
+            } catch (error) {
+                const apiError = normalizeAxiosError(error)
+                setPatientListState({
+                    isLoading: false,
+                    errorMessage: apiError.message,
+                })
+                return
+            }
+
+            setPatientListState({ isLoading: false, errorMessage: '' })
+        },
+        [archivedPatientFilter, dispatch, patientPage, patientSearch],
+    )
+
+    const handlePatientSearchChange = (value: string) => {
+        setPatientSearch(value)
+        setPatientPage(1)
+        setSelectedPatientId(null)
+        setSelectedPatient(null)
+    }
+
+    const handlePatientSearchClear = () => {
+        handlePatientSearchChange('')
+    }
+
+    const handleArchivedPatientFilterChange = (
+        value: PatientArchivedFilter,
+    ) => {
+        setArchivedPatientFilter(value)
+        setPatientPage(1)
+        setSelectedPatientId(null)
+        setSelectedPatient(null)
+    }
+
+    const handlePatientDetailClose = () => {
+        setSelectedPatientId(null)
+        setSelectedPatient(null)
+        setPatientDetailState({ isLoading: false, errorMessage: '' })
+    }
+
+    const handlePatientPageChange = (page: number) => {
+        setPatientPage(page)
+        setSelectedPatientId(null)
+        setSelectedPatient(null)
+    }
+
+    const handlePatientSelect = (patient: Patient) => {
+        setSelectedPatient(patient)
+        setSelectedPatientId(patient.id)
+        setPatientDetailState({ isLoading: true, errorMessage: '' })
+    }
+
+    const handlePatientCreated = () => {
+        setPatientPage(1)
+        void loadPatients({ page: 1 })
+    }
 
     useEffect(() => {
         if (!canRunProtectedApi(status)) {
@@ -56,8 +150,47 @@ const Home: NextPage = () => {
             return
         }
 
-        loadPatients()
-    }, [loadPatients, status, user])
+        const debounce = window.setTimeout(
+            () => void loadPatients(),
+            patientSearch.trim() ? 300 : 0,
+        )
+
+        return () => window.clearTimeout(debounce)
+    }, [loadPatients, patientSearch, status, user])
+
+    useEffect(() => {
+        if (!selectedPatientId) {
+            setPatientDetailState({ isLoading: false, errorMessage: '' })
+            return
+        }
+
+        let isCurrent = true
+
+        getPatient(selectedPatientId)
+            .then(patient => {
+                if (!isCurrent) {
+                    return
+                }
+
+                setSelectedPatient(patient)
+                setPatientDetailState({ isLoading: false, errorMessage: '' })
+            })
+            .catch(error => {
+                if (!isCurrent) {
+                    return
+                }
+
+                const apiError = normalizeAxiosError(error)
+                setPatientDetailState({
+                    isLoading: false,
+                    errorMessage: apiError.message,
+                })
+            })
+
+        return () => {
+            isCurrent = false
+        }
+    }, [selectedPatientId])
 
     useEffect(() => {
         if (!canRunProtectedApi(status)) {
@@ -120,13 +253,28 @@ const Home: NextPage = () => {
                     <MainArea
                         currentTab={currentTab}
                         onAddPatient={() => setIsPatientWizardOpen(true)}
+                        patientSearch={patientSearch}
+                        onPatientSearchChange={handlePatientSearchChange}
+                        onPatientSearchClear={handlePatientSearchClear}
+                        patientMeta={patientMeta}
+                        patientListState={patientListState}
+                        selectedPatient={selectedPatient}
+                        patientDetailState={patientDetailState}
+                        archivedPatientFilter={archivedPatientFilter}
+                        onArchivedPatientFilterChange={
+                            handleArchivedPatientFilterChange
+                        }
+                        onPatientSelect={handlePatientSelect}
+                        onPatientDetailClose={handlePatientDetailClose}
+                        onPatientPageChange={handlePatientPageChange}
+                        onPatientListRetry={() => void loadPatients()}
                     />
                 )}
             </div>
             <PatientRegistrationWizard
                 isOpen={isPatientWizardOpen}
                 onClose={() => setIsPatientWizardOpen(false)}
-                onSuccess={loadPatients}
+                onSuccess={handlePatientCreated}
             />
         </>
     )
