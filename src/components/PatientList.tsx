@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { ChangeEvent, useEffect, useMemo, useState } from 'react'
 import { useSelector } from 'react-redux'
 import { patientDataHeadings } from '../Constants'
 import PatientRowDetails, { isArchivedPatient } from './PatientRowDetails'
@@ -6,6 +6,7 @@ import { AppState } from '../store/store'
 import { PaginationMeta } from '../lib/api'
 import { formatDate } from '../utils'
 import { FiX } from 'react-icons/fi'
+import { PatientPayload } from '../services/patients'
 
 interface PatientListProps {
     meta?: PaginationMeta
@@ -14,10 +15,40 @@ interface PatientListProps {
     selectedPatient?: Patient | null
     isDetailLoading: boolean
     detailErrorMessage: string
+    mutationState: {
+        isSaving: boolean
+        isArchiving: boolean
+        errorMessage: string
+    }
+    permissions: {
+        canEdit: boolean
+        canEditDemographics: boolean
+        canEditMedical: boolean
+        canArchive: boolean
+    }
     onSelectPatient?: (patient: Patient) => void
     onCloseDetail?: () => void
+    onUpdatePatient?: (payload: Partial<PatientPayload>) => void | Promise<void>
+    onArchivePatient?: () => void | Promise<void>
     onPageChange?: (page: number) => void
     onRetry?: () => void
+}
+
+interface PatientEditValues {
+    firstName: string
+    lastName: string
+    sex: string
+    streetAddress: string
+    town: string
+    city: string
+    appointments: string
+    notes: string
+    emergency_contact_name: string
+    emergency_contact_phone: string
+    emergency_contact_relationship: string
+    allergies: string
+    medications: string
+    medical_alerts: string
 }
 
 const getNumber = (value: unknown, fallback: number) =>
@@ -32,6 +63,65 @@ const DetailField = ({ label, value }: { label: string; value?: string }) => (
     </div>
 )
 
+const DetailList = ({
+    label,
+    values,
+}: {
+    label: string
+    values?: string[]
+}) => {
+    const items = values?.filter(value => value.trim().length > 0) ?? []
+
+    return (
+        <div>
+            <p className="text-xs font-bold uppercase text-clinic-muted">
+                {label}
+            </p>
+            {items.length > 0 ? (
+                <div className="mt-2 flex flex-wrap gap-2">
+                    {items.map(value => (
+                        <span
+                            key={value}
+                            className="rounded bg-clinic-sky px-2 py-1 text-xs font-semibold text-clinic-blue">
+                            {value}
+                        </span>
+                    ))}
+                </div>
+            ) : (
+                <p className="mt-1 text-sm font-semibold text-clinic-ink">
+                    None recorded
+                </p>
+            )}
+        </div>
+    )
+}
+
+const listToInput = (values?: string[]) => values?.join('\n') ?? ''
+
+const inputToList = (value: string) =>
+    value
+        .split(/[\n,]/)
+        .map(item => item.trim())
+        .filter(Boolean)
+
+const getPatientEditValues = (patient: Patient): PatientEditValues => ({
+    firstName: patient.firstName ?? '',
+    lastName: patient.lastName ?? '',
+    sex: patient.sex ?? '',
+    streetAddress: patient.streetAddress ?? '',
+    town: patient.town ?? '',
+    city: patient.city ?? '',
+    appointments: patient.appointments ?? '',
+    notes: patient.notes ?? '',
+    emergency_contact_name: patient.emergency_contact_name ?? '',
+    emergency_contact_phone: patient.emergency_contact_phone ?? '',
+    emergency_contact_relationship:
+        patient.emergency_contact_relationship ?? '',
+    allergies: listToInput(patient.allergies),
+    medications: listToInput(patient.medications),
+    medical_alerts: listToInput(patient.medical_alerts),
+})
+
 const PatientList = ({
     meta,
     isLoading,
@@ -39,8 +129,12 @@ const PatientList = ({
     selectedPatient,
     isDetailLoading,
     detailErrorMessage,
+    mutationState,
+    permissions,
     onSelectPatient,
     onCloseDetail,
+    onUpdatePatient,
+    onArchivePatient,
     onPageChange,
     onRetry,
 }: PatientListProps) => {
@@ -54,6 +148,149 @@ const PatientList = ({
     const to = getNumber(meta?.to, patients.length)
     const showRows = !isLoading && !errorMessage && patients.length > 0
     const showEmpty = !isLoading && !errorMessage && patients.length === 0
+    const [isEditing, setIsEditing] = useState(false)
+    const [editValues, setEditValues] = useState<PatientEditValues | null>(null)
+    const selectedPatientArchived = selectedPatient
+        ? isArchivedPatient(selectedPatient)
+        : false
+    const canSubmitEdit =
+        permissions.canEdit && !mutationState.isSaving && !isDetailLoading
+
+    useEffect(() => {
+        if (!selectedPatient) {
+            setIsEditing(false)
+            setEditValues(null)
+            return
+        }
+
+        setEditValues(getPatientEditValues(selectedPatient))
+        setIsEditing(false)
+    }, [selectedPatient])
+
+    const fieldClass =
+        'mt-2 block w-full rounded-md border-clinic-line bg-white text-sm text-clinic-ink shadow-sm focus:border-clinic-blue focus:ring-clinic-blue/20 disabled:bg-clinic-canvas disabled:text-clinic-muted'
+
+    const updateField = (
+        event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+    ) => {
+        const { name, value } = event.target
+
+        setEditValues(previous =>
+            previous ? { ...previous, [name]: value } : previous,
+        )
+    }
+
+    const submitEdit = async () => {
+        if (!editValues || !canSubmitEdit) {
+            return
+        }
+
+        const payload: Partial<PatientPayload> = {}
+
+        if (permissions.canEditDemographics) {
+            Object.assign(payload, {
+                firstName: editValues.firstName,
+                lastName: editValues.lastName,
+                sex: editValues.sex,
+                streetAddress: editValues.streetAddress,
+                town: editValues.town,
+                city: editValues.city,
+                appointments: editValues.appointments,
+                notes: editValues.notes,
+                emergency_contact_name: editValues.emergency_contact_name,
+                emergency_contact_phone: editValues.emergency_contact_phone,
+                emergency_contact_relationship:
+                    editValues.emergency_contact_relationship,
+            })
+        }
+
+        if (permissions.canEditMedical) {
+            Object.assign(payload, {
+                allergies: inputToList(editValues.allergies),
+                medications: inputToList(editValues.medications),
+                medical_alerts: inputToList(editValues.medical_alerts),
+            })
+        }
+
+        try {
+            await onUpdatePatient?.(payload)
+            setIsEditing(false)
+        } catch {
+            // The parent owns the API error message shown in this pane.
+        }
+    }
+
+    const archiveSelectedPatient = async () => {
+        if (
+            !permissions.canArchive ||
+            selectedPatientArchived ||
+            mutationState.isArchiving
+        ) {
+            return
+        }
+
+        if (
+            window.confirm(
+                'Archive this patient record? It will be hidden from active patient searches.',
+            )
+        ) {
+            await onArchivePatient?.()
+        }
+    }
+
+    const renderInput = (
+        name: keyof PatientEditValues,
+        label: string,
+        disabled = false,
+    ) => (
+        <label className="block">
+            <span className="text-xs font-bold uppercase text-clinic-muted">
+                {label}
+            </span>
+            <input
+                name={name}
+                value={editValues?.[name] ?? ''}
+                className={fieldClass}
+                disabled={disabled}
+                onChange={updateField}
+            />
+        </label>
+    )
+
+    const renderTextArea = (
+        name: keyof PatientEditValues,
+        label: string,
+        rows = 3,
+        disabled = false,
+    ) => (
+        <label className="block">
+            <span className="text-xs font-bold uppercase text-clinic-muted">
+                {label}
+            </span>
+            <textarea
+                name={name}
+                value={editValues?.[name] ?? ''}
+                rows={rows}
+                className={fieldClass}
+                disabled={disabled}
+                onChange={updateField}
+            />
+        </label>
+    )
+
+    const detailAddress = useMemo(
+        () =>
+            selectedPatient
+                ? [
+                      selectedPatient.streetAddress,
+                      selectedPatient.town,
+                      selectedPatient.city,
+                  ]
+                      .filter(Boolean)
+                      .join(', ')
+                : '',
+        [selectedPatient],
+    )
 
     return (
         <section
@@ -199,38 +436,196 @@ const PatientList = ({
                             </p>
                         ) : null}
 
-                        <div className="grid gap-4">
-                            <DetailField
-                                label="Sex"
-                                value={selectedPatient.sex}
-                            />
-                            <DetailField
-                                label="Address"
-                                value={[
-                                    selectedPatient.streetAddress,
-                                    selectedPatient.town,
-                                    selectedPatient.city,
-                                ]
-                                    .filter(Boolean)
-                                    .join(', ')}
-                            />
-                            <DetailField
-                                label="Appointment context"
-                                value={selectedPatient.appointments}
-                            />
-                            <DetailField
-                                label="Registered"
-                                value={formatDate(selectedPatient.created_at)}
-                            />
-                            <DetailField
-                                label="Last updated"
-                                value={formatDate(selectedPatient.updated_at)}
-                            />
-                            <DetailField
-                                label="Notes"
-                                value={selectedPatient.notes}
-                            />
+                        {mutationState.errorMessage ? (
+                            <p className="rounded-md bg-clinic-rose px-3 py-2 text-sm font-semibold text-rose-700">
+                                {mutationState.errorMessage}
+                            </p>
+                        ) : null}
+
+                        <div className="flex flex-wrap gap-2">
+                            {permissions.canEdit ? (
+                                <button
+                                    type="button"
+                                    className="rounded-md border border-clinic-line px-3 py-2 text-sm font-bold text-clinic-muted hover:border-clinic-blue hover:text-clinic-blue disabled:cursor-not-allowed disabled:opacity-50"
+                                    disabled={isDetailLoading}
+                                    onClick={() =>
+                                        setIsEditing(previous => !previous)
+                                    }>
+                                    {isEditing ? 'Cancel edit' : 'Edit patient'}
+                                </button>
+                            ) : (
+                                <span className="rounded-md bg-clinic-canvas px-3 py-2 text-sm font-semibold text-clinic-muted">
+                                    Read-only access
+                                </span>
+                            )}
+                            {permissions.canArchive &&
+                            !selectedPatientArchived ? (
+                                <button
+                                    type="button"
+                                    className="rounded-md border border-rose-200 px-3 py-2 text-sm font-bold text-rose-700 hover:bg-clinic-rose disabled:cursor-not-allowed disabled:opacity-50"
+                                    disabled={
+                                        mutationState.isArchiving ||
+                                        isDetailLoading
+                                    }
+                                    onClick={archiveSelectedPatient}>
+                                    {mutationState.isArchiving
+                                        ? 'Archiving...'
+                                        : 'Archive patient'}
+                                </button>
+                            ) : null}
                         </div>
+
+                        {isEditing && editValues ? (
+                            <div className="space-y-5">
+                                <div className="grid gap-4 md:grid-cols-2">
+                                    {renderInput(
+                                        'firstName',
+                                        'First name',
+                                        !permissions.canEditDemographics,
+                                    )}
+                                    {renderInput(
+                                        'lastName',
+                                        'Last name',
+                                        !permissions.canEditDemographics,
+                                    )}
+                                    {renderInput(
+                                        'sex',
+                                        'Sex',
+                                        !permissions.canEditDemographics,
+                                    )}
+                                    {renderInput(
+                                        'city',
+                                        'City',
+                                        !permissions.canEditDemographics,
+                                    )}
+                                </div>
+                                {renderInput(
+                                    'streetAddress',
+                                    'Street address',
+                                    !permissions.canEditDemographics,
+                                )}
+                                {renderInput(
+                                    'town',
+                                    'Town',
+                                    !permissions.canEditDemographics,
+                                )}
+                                {renderInput(
+                                    'emergency_contact_name',
+                                    'Emergency contact',
+                                    !permissions.canEditDemographics,
+                                )}
+                                {renderInput(
+                                    'emergency_contact_phone',
+                                    'Emergency phone',
+                                    !permissions.canEditDemographics,
+                                )}
+                                {renderInput(
+                                    'emergency_contact_relationship',
+                                    'Emergency relationship',
+                                    !permissions.canEditDemographics,
+                                )}
+                                {renderTextArea(
+                                    'appointments',
+                                    'Appointment context',
+                                    2,
+                                    !permissions.canEditDemographics,
+                                )}
+                                {renderTextArea(
+                                    'notes',
+                                    'Notes',
+                                    4,
+                                    !permissions.canEditDemographics,
+                                )}
+                                {renderTextArea(
+                                    'allergies',
+                                    'Allergies',
+                                    3,
+                                    !permissions.canEditMedical,
+                                )}
+                                {renderTextArea(
+                                    'medications',
+                                    'Medications',
+                                    3,
+                                    !permissions.canEditMedical,
+                                )}
+                                {renderTextArea(
+                                    'medical_alerts',
+                                    'Medical alerts',
+                                    3,
+                                    !permissions.canEditMedical,
+                                )}
+                                <button
+                                    type="button"
+                                    className="w-full rounded-md bg-clinic-blue px-4 py-2 text-sm font-bold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                    disabled={!canSubmitEdit}
+                                    onClick={() => void submitEdit()}>
+                                    {mutationState.isSaving
+                                        ? 'Saving...'
+                                        : 'Save changes'}
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="grid gap-5">
+                                <DetailField
+                                    label="Sex"
+                                    value={selectedPatient.sex}
+                                />
+                                <DetailField
+                                    label="Address"
+                                    value={detailAddress}
+                                />
+                                <DetailField
+                                    label="Emergency contact"
+                                    value={
+                                        selectedPatient.emergency_contact_name
+                                    }
+                                />
+                                <DetailField
+                                    label="Emergency phone"
+                                    value={
+                                        selectedPatient.emergency_contact_phone
+                                    }
+                                />
+                                <DetailField
+                                    label="Emergency relationship"
+                                    value={
+                                        selectedPatient.emergency_contact_relationship
+                                    }
+                                />
+                                <DetailList
+                                    label="Allergies"
+                                    values={selectedPatient.allergies}
+                                />
+                                <DetailList
+                                    label="Medications"
+                                    values={selectedPatient.medications}
+                                />
+                                <DetailList
+                                    label="Medical alerts"
+                                    values={selectedPatient.medical_alerts}
+                                />
+                                <DetailField
+                                    label="Appointment context"
+                                    value={selectedPatient.appointments}
+                                />
+                                <DetailField
+                                    label="Registered"
+                                    value={formatDate(
+                                        selectedPatient.created_at,
+                                    )}
+                                />
+                                <DetailField
+                                    label="Last updated"
+                                    value={formatDate(
+                                        selectedPatient.updated_at,
+                                    )}
+                                />
+                                <DetailField
+                                    label="Notes"
+                                    value={selectedPatient.notes}
+                                />
+                            </div>
+                        )}
 
                         <div className="rounded-md border border-dashed border-clinic-line p-4">
                             <p className="text-xs font-bold uppercase text-clinic-muted">

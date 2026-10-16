@@ -3,7 +3,8 @@ import InfoSection from './InfoSection'
 import CurrentTabDetail from './CurrentTabDetail'
 import PatientList from './PatientList'
 import OverviewDashboard from './OverviewDashboard'
-import { PatientArchivedFilter } from '../services/patients'
+import TreatmentCatalog from './TreatmentCatalog'
+import { PatientArchivedFilter, PatientPayload } from '../services/patients'
 
 const MainArea = ({
     currentTab,
@@ -15,10 +16,14 @@ const MainArea = ({
     patientListState,
     selectedPatient,
     patientDetailState,
+    patientMutationState,
+    patientPermissions,
     archivedPatientFilter,
     onArchivedPatientFilterChange,
     onPatientSelect,
     onPatientDetailClose,
+    onPatientUpdate,
+    onPatientArchive,
     onPatientPageChange,
     onPatientListRetry,
 }: {
@@ -31,10 +36,23 @@ const MainArea = ({
     patientListState?: { isLoading: boolean; errorMessage: string }
     selectedPatient?: Patient | null
     patientDetailState?: { isLoading: boolean; errorMessage: string }
+    patientMutationState?: {
+        isSaving: boolean
+        isArchiving: boolean
+        errorMessage: string
+    }
+    patientPermissions?: {
+        canEdit: boolean
+        canEditDemographics: boolean
+        canEditMedical: boolean
+        canArchive: boolean
+    }
     archivedPatientFilter?: PatientArchivedFilter
     onArchivedPatientFilterChange?: (value: PatientArchivedFilter) => void
     onPatientSelect?: (patient: Patient) => void
     onPatientDetailClose?: () => void
+    onPatientUpdate?: (payload: Partial<PatientPayload>) => void
+    onPatientArchive?: () => void
     onPatientPageChange?: (page: number) => void
     onPatientListRetry?: () => void
 }) => {
@@ -42,6 +60,8 @@ const MainArea = ({
         switch (tab) {
             case 'dashboard':
                 return <OverviewDashboard />
+            case 'treatments':
+                return <TreatmentCatalog />
             case 'patient_list':
                 return (
                     <PatientList
@@ -53,8 +73,25 @@ const MainArea = ({
                         detailErrorMessage={
                             patientDetailState?.errorMessage ?? ''
                         }
+                        mutationState={
+                            patientMutationState ?? {
+                                isSaving: false,
+                                isArchiving: false,
+                                errorMessage: '',
+                            }
+                        }
+                        permissions={
+                            patientPermissions ?? {
+                                canEdit: false,
+                                canEditDemographics: false,
+                                canEditMedical: false,
+                                canArchive: false,
+                            }
+                        }
                         onSelectPatient={onPatientSelect}
                         onCloseDetail={onPatientDetailClose}
+                        onUpdatePatient={onPatientUpdate}
+                        onArchivePatient={onPatientArchive}
                         onPageChange={onPatientPageChange}
                         onRetry={onPatientListRetry}
                     />
@@ -70,12 +107,16 @@ const MainArea = ({
                 onPatientSearchChange={onPatientSearchChange}
                 onPatientSearchClear={onPatientSearchClear}
             />
-            <CurrentTabDetail
-                currentTab={currentTab}
-                patientTotal={patientMeta?.total}
-                archivedPatientFilter={archivedPatientFilter}
-                onArchivedPatientFilterChange={onArchivedPatientFilterChange}
-            />
+            {currentTab !== 'treatments' && (
+                <CurrentTabDetail
+                    currentTab={currentTab}
+                    patientTotal={patientMeta?.total}
+                    archivedPatientFilter={archivedPatientFilter}
+                    onArchivedPatientFilterChange={
+                        onArchivedPatientFilterChange
+                    }
+                />
+            )}
             {renderTabDetailSection(currentTab)}
         </main>
     )

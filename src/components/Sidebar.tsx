@@ -8,7 +8,7 @@ import { AiOutlineMessage } from 'react-icons/ai'
 import { IoSettings } from 'react-icons/io5'
 import { MdDashboard, MdPayment } from 'react-icons/md'
 import { Transition } from '@headlessui/react'
-import { FiLogOut } from 'react-icons/fi'
+import { FiClipboard, FiLogOut } from 'react-icons/fi'
 import {
     AuthUser,
     getAuthUserDisplayName,
@@ -29,6 +29,8 @@ const getIcons = (tab: Tabs, active: boolean) => {
             return <MdDashboard className={iconClass} />
         case Tabs.PatientList:
             return <BsPersonFill className={iconClass} />
+        case Tabs.Treatments:
+            return <FiClipboard className={iconClass} />
         case Tabs.PaymentInformation:
             return <MdPayment className={iconClass} />
         case Tabs.Settings:

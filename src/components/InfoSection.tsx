@@ -29,24 +29,28 @@ const InfoSection = ({
             </div>
 
             <div className="flex flex-row gap-3 items-center">
-                <Searchbar
-                    value={currentTab === 'patient_list' ? patientSearch : ''}
-                    placeholder={
-                        currentTab === 'patient_list'
-                            ? 'Search patients'
-                            : 'Search patients, bookings, invoices'
-                    }
-                    onChange={
-                        currentTab === 'patient_list'
-                            ? onPatientSearchChange
-                            : undefined
-                    }
-                    onClear={
-                        currentTab === 'patient_list'
-                            ? onPatientSearchClear
-                            : undefined
-                    }
-                />
+                {currentTab !== 'treatments' && (
+                    <Searchbar
+                        value={
+                            currentTab === 'patient_list' ? patientSearch : ''
+                        }
+                        placeholder={
+                            currentTab === 'patient_list'
+                                ? 'Search patients'
+                                : 'Search patients, bookings, invoices'
+                        }
+                        onChange={
+                            currentTab === 'patient_list'
+                                ? onPatientSearchChange
+                                : undefined
+                        }
+                        onClear={
+                            currentTab === 'patient_list'
+                                ? onPatientSearchClear
+                                : undefined
+                        }
+                    />
+                )}
                 {currentTab === 'patient_list' && onAddPatient && (
                     <ActionButton action="add" onClick={onAddPatient} />
                 )}

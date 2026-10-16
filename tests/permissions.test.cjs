@@ -76,6 +76,7 @@ assert.deepEqual(
         'dashboard',
         'calendar',
         'patient_list',
+        'treatments',
         'messages',
         'payment_information',
         'settings',
@@ -102,6 +103,7 @@ assert.deepEqual(
         'dashboard',
         'calendar',
         'patient_list',
+        'treatments',
         'messages',
         'payment_information',
         'settings',
@@ -137,6 +139,71 @@ assert.equal(getAuthorizedNavigationModules(noPermissions).length, 0)
 assert.equal(
     getUserPermissionSet({ isSuperAdmin: true }).has('settings.view'),
     true,
+)
+assert.equal(getUserPermissionSet(admin).has('patients.update'), true)
+assert.equal(getUserPermissionSet(admin).has('patients.archive'), true)
+assert.equal(getUserPermissionSet(admin).has('patients.medical.update'), true)
+assert.equal(getUserPermissionSet(receptionist).has('patients.update'), true)
+assert.equal(getUserPermissionSet(receptionist).has('patients.archive'), true)
+assert.equal(
+    getUserPermissionSet(receptionist).has('patients.medical.update'),
+    false,
+)
+assert.equal(
+    getUserPermissionSet({ roles: ['dentist'] }).has('patients.view'),
+    true,
+)
+assert.equal(
+    getUserPermissionSet({ roles: ['dentist'] }).has('patients.medical.update'),
+    true,
+)
+assert.equal(
+    getUserPermissionSet({ roles: ['dentist'] }).has('patients.archive'),
+    false,
+)
+
+for (const user of [
+    admin,
+    singularRole,
+    { isSuperAdmin: true },
+    { is_super_admin: true },
+]) {
+    for (const permission of [
+        'treatments.view',
+        'treatments.create',
+        'treatments.update',
+        'treatments.delete',
+    ]) {
+        assert.equal(getUserPermissionSet(user).has(permission), true)
+    }
+    assert.equal(canAccessModuleId(user, 'treatments'), true)
+}
+for (const user of [
+    null,
+    legacyUser,
+    noPermissions,
+    receptionist,
+    billing,
+    { roles: ['dentist'] },
+]) {
+    assert.equal(canAccessModuleId(user, 'treatments'), false)
+    assert.equal(getUserPermissionSet(user).has('treatments.create'), false)
+    assert.equal(getUserPermissionSet(user).has('treatments.update'), false)
+    assert.equal(getUserPermissionSet(user).has('treatments.delete'), false)
+}
+const treatmentViewer = { permissions: ['treatments.view'] }
+assert.equal(canAccessModuleId(treatmentViewer, 'treatments'), true)
+assert.equal(
+    getUserPermissionSet(treatmentViewer).has('treatments.update'),
+    false,
+)
+assert.equal(
+    canAccessModuleId({ permissions: ['treatments.create'] }, 'treatments'),
+    false,
+)
+assert.equal(
+    canAccessModuleId({ can: { 'treatments.view': false } }, 'treatments'),
+    false,
 )
 
 console.log('Permission mapping tests passed.')

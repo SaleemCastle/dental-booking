@@ -166,3 +166,5 @@ export const updatePatient = async (
 export const deletePatient = async (patientId: number) => {
     await apiClient.delete(`/api/patients/${patientId}`)
 }
+
+export const archivePatient = deletePatient

@@ -5,6 +5,13 @@ export type Permission =
     | 'dashboard.view'
     | 'appointments.view'
     | 'patients.view'
+    | 'patients.update'
+    | 'patients.archive'
+    | 'patients.medical.update'
+    | 'treatments.view'
+    | 'treatments.create'
+    | 'treatments.update'
+    | 'treatments.delete'
     | 'messages.view'
     | 'payments.view'
     | 'settings.view'
@@ -13,6 +20,7 @@ export type AppModule =
     | 'dashboard'
     | 'calendar'
     | 'patient_list'
+    | 'treatments'
     | 'messages'
     | 'payment_information'
     | 'settings'
@@ -49,6 +57,13 @@ const rolePermissions: Record<string, Permission[]> = {
         'dashboard.view',
         'appointments.view',
         'patients.view',
+        'patients.update',
+        'patients.archive',
+        'patients.medical.update',
+        'treatments.view',
+        'treatments.create',
+        'treatments.update',
+        'treatments.delete',
         'messages.view',
         'payments.view',
         'settings.view',
@@ -57,12 +72,15 @@ const rolePermissions: Record<string, Permission[]> = {
         'dashboard.view',
         'appointments.view',
         'patients.view',
+        'patients.medical.update',
         'messages.view',
     ],
     receptionist: [
         'dashboard.view',
         'appointments.view',
         'patients.view',
+        'patients.update',
+        'patients.archive',
         'messages.view',
     ],
     billing: ['dashboard.view', 'payments.view'],
@@ -86,6 +104,12 @@ export const navigationModules: NavigationModule[] = [
         label: Tabs.PatientList,
         href: { pathname: '/', query: { tab: 'patient_list' } },
         permissions: ['patients.view'],
+    },
+    {
+        id: 'treatments',
+        label: Tabs.Treatments,
+        href: { pathname: '/', query: { tab: 'treatments' } },
+        permissions: ['treatments.view'],
     },
     {
         id: 'messages',
@@ -263,6 +287,11 @@ const getLegacyFallbackPermissions = () => {
     const permissions = new Set<Permission>()
 
     navigationModules.forEach(module => {
+        // Legacy sessions have no catalog authorization information.
+        if (module.id === 'treatments') {
+            return
+        }
+
         module.permissions.forEach(permission => permissions.add(permission))
     })
 
@@ -277,6 +306,7 @@ export const getUserPermissionSet = (user: AuthUser | null) => {
     }
 
     if (user.isSuperAdmin === true || user.is_super_admin === true) {
+        rolePermissions.admin.forEach(permission => permissions.add(permission))
         navigationModules.forEach(module => {
             module.permissions.forEach(permission =>
                 permissions.add(permission),
