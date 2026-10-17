@@ -4,6 +4,8 @@ import { MdOutlineCalendarMonth, MdOutlinePayments } from 'react-icons/md'
 import { AiOutlineClockCircle } from 'react-icons/ai'
 import { getDashboardToneClass } from '../services/dashboard'
 import { useDashboardSummary } from '../hooks/dashboard'
+import { useAssignedTasks } from '../hooks/tasks'
+import AssignedTasks from './AssignedTasks'
 import {
     useAppointmentMutationSync,
     useAppointmentPermissions,
@@ -22,7 +24,11 @@ import {
     appointmentPrimaryClass,
 } from './AppointmentDialog'
 
-const OverviewDashboard = () => {
+const OverviewDashboard = ({
+    onOpenPatient,
+}: {
+    onOpenPatient?: (id: number) => void
+}) => {
     const {
         summary,
         error,
@@ -31,6 +37,8 @@ const OverviewDashboard = () => {
         retry,
         canView,
     } = useDashboardSummary()
+    const tasks = useAssignedTasks(canView)
+    const refreshDashboard = () => Promise.allSettled([retry(), tasks.retry()])
     const access = useAppointmentPermissions()
     const syncAppointment = useAppointmentMutationSync()
     const [selectedId, setSelectedId] = useState<number | null>(null)
@@ -90,10 +98,16 @@ const OverviewDashboard = () => {
                 <div className="flex flex-wrap gap-3">
                     <button
                         type="button"
-                        disabled={isValidating}
+                        disabled={
+                            isValidating ||
+                            tasks.isValidating ||
+                            tasks.pendingId !== null
+                        }
                         className={appointmentButtonClass}
-                        onClick={() => void retry()}>
-                        {isValidating ? 'Refreshing...' : 'Refresh dashboard'}
+                        onClick={() => void refreshDashboard()}>
+                        {isValidating || tasks.isValidating
+                            ? 'Refreshing...'
+                            : 'Refresh dashboard'}
                     </button>
                     {access.canCreate && (
                         <button
@@ -313,6 +327,11 @@ const OverviewDashboard = () => {
                     </div>
                 </div>
             )}
+            <AssignedTasks
+                worklist={tasks}
+                onOpenPatient={onOpenPatient}
+                onOpenAppointment={setSelectedId}
+            />
             {selectedId !== null && access.canView && (
                 <AppointmentDetails
                     key={selectedId}

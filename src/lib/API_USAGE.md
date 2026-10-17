@@ -215,3 +215,46 @@ All backend requests are mocked. Browser checks cover create/edit/link/detach/
 delete, duplicate submissions, relationship errors, failed refreshes, collaborative
 attribution, pagination, archived patients, provider/appointment loading failures,
 and role restrictions. They do not mutate live records or verify database behavior.
+
+## Assigned Tasks and Follow-ups
+
+The dashboard's My tasks worklist uses `GET /api/tasks?assigned_to_me=1`.
+It is independent of the summary's provider workload and remains usable if the
+summary endpoint fails. All task statuses are included initially; due-date and
+status filters combine on the backend before pagination. Boolean filters are
+sent as `1` or `0`, and changing filters resets the page. The API's due-date/ID
+ordering and pagination metadata are preserved.
+
+Due today and overdue refer to the clinic's UTC calendar date, not the browser's
+timezone or a rolling 24-hour period. Only pending and in-progress tasks receive
+due/overdue badges. Completed and cancelled tasks retain their due dates without
+being presented as late work. Completion uses
+`PATCH /api/tasks/{id}/status` with only `{"status":"completed"}`; the server
+supplies completion timestamps. Only open tasks offer Mark complete in this UI.
+
+Read access requires `tasks.view`, and completion additionally requires
+`tasks.update`. Admin and M1 resource/action wildcard grants are supported.
+Assignment and other staff roles grant no task access. Clinical-note writes
+continue to use their separate role-only policy. Related-patient and appointment
+buttons require their own read permissions. Patient links load detail by canonical
+ID, including archived records outside the current list page, with loading/error/
+retry states. Appointments open in the existing detail workflow.
+
+Task caches include the session, filters, page, and current UTC date. Successful
+completion updates the current list immediately, refreshes it, and invalidates
+the user's dashboard summary. A completed task leaves due-date/open-status
+filters immediately; a page that becomes empty at the end of the list returns
+to the new last page. Failed refreshes preserve successful completion and offer
+retry. Task and dashboard refresh buttons, 30-second visible/online polling,
+focus/reconnect, and returning to the dashboard fetch current work. Task errors
+do not replace working appointment/metric sections. A read 403 hides cached task
+content, and a write 403 removes completion controls.
+
+Run `npm run test:tasks` for API envelopes/filters, wildcard/role permissions,
+UTC midnight boundaries, completion locking/cache refresh, and panel states.
+With the app running, `npm run test:tasks:browser` uses Node 22+ and Chrome,
+Edge, or Chromium. Override `TASKS_TEST_URL`, `TASKS_TEST_API_URL`, or `BROWSER_PATH`
+as needed. The browser checks intercept all backend requests; they cover assigned
+scope, due/status filters, UTC rollover in a Bogota browser, context links/errors,
+completion and failed refreshes, pagination shrinkage, and permission scenarios.
+They do not change live records or verify database behavior.

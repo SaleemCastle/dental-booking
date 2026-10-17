@@ -27,6 +27,8 @@ const MainArea = ({
     onPatientArchive,
     onPatientPageChange,
     onPatientListRetry,
+    onOpenRelatedPatient,
+    onPatientDetailRetry,
 }: {
     currentTab: string
     onAddPatient?: () => void
@@ -56,11 +58,15 @@ const MainArea = ({
     onPatientArchive?: () => void
     onPatientPageChange?: (page: number) => void
     onPatientListRetry?: () => void
+    onOpenRelatedPatient?: (id: number) => void
+    onPatientDetailRetry?: () => void
 }) => {
     const renderTabDetailSection = (tab: string) => {
         switch (tab) {
             case 'dashboard':
-                return <OverviewDashboard />
+                return (
+                    <OverviewDashboard onOpenPatient={onOpenRelatedPatient} />
+                )
             case 'treatments':
                 return <TreatmentCatalog />
             case 'calendar':
@@ -93,6 +99,7 @@ const MainArea = ({
                         }
                         onSelectPatient={onPatientSelect}
                         onCloseDetail={onPatientDetailClose}
+                        onDetailRetry={onPatientDetailRetry}
                         onUpdatePatient={onPatientUpdate}
                         onArchivePatient={onPatientArchive}
                         onPageChange={onPatientPageChange}

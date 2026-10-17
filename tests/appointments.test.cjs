@@ -591,6 +591,14 @@ const main = async () => {
         isLoading: false,
     }
     const Dashboard = compileModule('components/OverviewDashboard.tsx', {
+        '../hooks/tasks': {
+            useAssignedTasks: () => ({
+                retry: async () => {},
+                isValidating: false,
+                pendingId: null,
+            }),
+        },
+        './AssignedTasks': () => null,
         '../services/dashboard': dashboardService,
         '../hooks/dashboard': { useDashboardSummary: () => dashboardUi },
         '../hooks/appointments': {

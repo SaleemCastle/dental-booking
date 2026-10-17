@@ -12,6 +12,10 @@ export type Permission =
     | 'patients.archive'
     | 'patients.medical.update'
     | 'clinical_notes.view'
+    | 'tasks.view'
+    | 'tasks.create'
+    | 'tasks.update'
+    | 'tasks.delete'
     | 'treatments.view'
     | 'treatments.create'
     | 'treatments.update'
@@ -67,6 +71,10 @@ const rolePermissions: Record<string, Permission[]> = {
         'patients.update',
         'patients.archive',
         'patients.medical.update',
+        'tasks.view',
+        'tasks.create',
+        'tasks.update',
+        'tasks.delete',
         'treatments.view',
         'treatments.create',
         'treatments.update',
@@ -330,6 +338,26 @@ export const getUserPermissionSet = (user: AuthUser | null) => {
     }
 
     extracted.permissions.forEach(permission => permissions.add(permission))
+
+    // Resolve M1 resource/action wildcards for the permissions used by the UI.
+    // Clinical-note writes retain their separate role-only policy below.
+    const knownPermissions = new Set<Permission>([
+        ...Object.values(rolePermissions).flat(),
+        'clinical_notes.view',
+    ])
+    knownPermissions.forEach(permission => {
+        if (
+            Array.from(extracted.permissions as Set<string>).some(
+                value =>
+                    value === '*' ||
+                    (value.endsWith('.*') &&
+                        permission.startsWith(value.slice(0, -1))) ||
+                    (value.startsWith('*.') &&
+                        permission.endsWith(value.slice(1))),
+            )
+        )
+            permissions.add(permission)
+    })
 
     return permissions
 }
