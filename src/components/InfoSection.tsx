@@ -29,7 +29,9 @@ const InfoSection = ({
             </div>
 
             <div className="flex flex-row gap-3 items-center">
-                {!['treatments', 'calendar'].includes(currentTab) && (
+                {!['dashboard', 'treatments', 'calendar'].includes(
+                    currentTab,
+                ) && (
                     <Searchbar
                         value={
                             currentTab === 'patient_list' ? patientSearch : ''

@@ -87,18 +87,37 @@ const OverviewDashboard = () => {
                 <h1 className="text-xl font-extrabold text-clinic-ink">
                     Clinic overview
                 </h1>
-                {access.canCreate && (
+                <div className="flex flex-wrap gap-3">
                     <button
                         type="button"
-                        className={appointmentPrimaryClass}
-                        onClick={() => {
-                            setNotice('')
-                            setEditor({ appointment: null })
-                        }}>
-                        Book appointment
+                        disabled={isValidating}
+                        className={appointmentButtonClass}
+                        onClick={() => void retry()}>
+                        {isValidating ? 'Refreshing...' : 'Refresh dashboard'}
                     </button>
-                )}
+                    {access.canCreate && (
+                        <button
+                            type="button"
+                            className={appointmentPrimaryClass}
+                            onClick={() => {
+                                setNotice('')
+                                setEditor({ appointment: null })
+                            }}>
+                            Book appointment
+                        </button>
+                    )}
+                </div>
             </div>
+            <p className="mb-4 text-sm text-clinic-muted">
+                Today&apos;s activity · {utcToday()} · UTC
+            </p>
+            <span role="status" className="sr-only">
+                {isLoading
+                    ? 'Loading dashboard...'
+                    : isValidating
+                    ? 'Refreshing dashboard...'
+                    : ''}
+            </span>
             {notice && (
                 <p
                     role="status"
@@ -106,41 +125,10 @@ const OverviewDashboard = () => {
                     {notice}
                 </p>
             )}
-            <div className="grid grid-cols-4 gap-4">
-                {isLoading
-                    ? Array.from({ length: 4 }).map((_, index) => (
-                          <div
-                              key={index}
-                              className="rounded-md border border-clinic-line bg-white p-4 shadow-sm">
-                              <div className="mb-4 h-6 w-24 rounded bg-clinic-canvas" />
-                              <div className="h-9 w-20 rounded bg-clinic-canvas" />
-                              <div className="mt-2 h-5 w-32 rounded bg-clinic-canvas" />
-                          </div>
-                      ))
-                    : summary?.metrics.map(metric => (
-                          <div
-                              key={metric.label}
-                              className="rounded-md border border-clinic-line bg-white p-4 shadow-sm">
-                              <div
-                                  className={`mb-4 inline-flex rounded px-2 py-1 text-xs font-bold ${getDashboardToneClass(
-                                      metric.tone,
-                                  )}`}>
-                                  {metric.label}
-                              </div>
-                              <div className="text-3xl font-extrabold text-clinic-ink">
-                                  {metric.value}
-                              </div>
-                              <p className="mt-1 text-sm text-clinic-muted">
-                                  {metric.detail}
-                              </p>
-                          </div>
-                      ))}
-            </div>
-
             {error && (
                 <div
                     role="alert"
-                    className="mt-6 rounded-md border border-clinic-rose bg-white p-4 text-sm font-bold text-rose-700 shadow-sm">
+                    className="rounded-md border border-clinic-rose bg-white p-4 text-sm font-bold text-rose-700 shadow-sm">
                     <p>{error.message}</p>
                     <button
                         type="button"
@@ -151,140 +139,180 @@ const OverviewDashboard = () => {
                     </button>
                 </div>
             )}
-
-            <div className="mt-6 grid grid-cols-[1.7fr_1fr] gap-6">
-                <div className="rounded-md border border-clinic-line bg-white shadow-sm">
-                    <div className="flex items-center justify-between border-b border-clinic-line px-5 py-4">
-                        <div>
-                            <p className="text-xs font-bold uppercase text-clinic-muted">
-                                Reservations
-                            </p>
-                            <h3 className="text-lg font-extrabold text-clinic-ink">
-                                Today&apos;s treatment flow
-                            </h3>
-                        </div>
-                        <MdOutlineCalendarMonth className="text-2xl text-clinic-blue" />
+            {!error && (
+                <div aria-busy={isValidating}>
+                    <div className="grid grid-cols-4 gap-4">
+                        {isLoading
+                            ? Array.from({ length: 4 }).map((_, index) => (
+                                  <div
+                                      key={index}
+                                      className="rounded-md border border-clinic-line bg-white p-4 shadow-sm">
+                                      <div className="mb-4 h-6 w-24 rounded bg-clinic-canvas" />
+                                      <div className="h-9 w-20 rounded bg-clinic-canvas" />
+                                      <div className="mt-2 h-5 w-32 rounded bg-clinic-canvas" />
+                                  </div>
+                              ))
+                            : summary?.metrics.map(metric => (
+                                  <div
+                                      key={metric.label}
+                                      className="rounded-md border border-clinic-line bg-white p-4 shadow-sm">
+                                      <div
+                                          className={`mb-4 inline-flex rounded px-2 py-1 text-xs font-bold ${getDashboardToneClass(
+                                              metric.tone,
+                                          )}`}>
+                                          {metric.label}
+                                      </div>
+                                      <div className="text-3xl font-extrabold text-clinic-ink">
+                                          {metric.value}
+                                      </div>
+                                      <p className="mt-1 text-sm text-clinic-muted">
+                                          {metric.detail}
+                                      </p>
+                                  </div>
+                              ))}
                     </div>
-                    <div className="divide-y divide-clinic-line">
-                        {isLoading && (
-                            <div className="px-5 py-8 text-sm font-bold text-clinic-muted">
-                                Loading today&apos;s appointments...
-                            </div>
-                        )}
 
-                        {!isLoading &&
-                            summary?.todayAppointments.map(appointment => (
-                                <div
-                                    key={appointment.id}
-                                    className="grid grid-cols-[72px_1fr_150px_120px] items-center px-5 py-4">
-                                    <p className="text-sm font-bold text-clinic-ink">
-                                        {appointment.time}
+                    <div className="mt-6 grid grid-cols-[1.7fr_1fr] gap-6">
+                        <div className="rounded-md border border-clinic-line bg-white shadow-sm">
+                            <div className="flex items-center justify-between border-b border-clinic-line px-5 py-4">
+                                <div>
+                                    <p className="text-xs font-bold uppercase text-clinic-muted">
+                                        Reservations
                                     </p>
-                                    <div>
-                                        <p className="font-bold text-clinic-ink">
-                                            {appointment.patient}
-                                        </p>
-                                        <p className="text-sm text-clinic-muted">
-                                            {appointment.treatment}
-                                        </p>
+                                    <h3 className="text-lg font-extrabold text-clinic-ink">
+                                        Today&apos;s appointments
+                                    </h3>
+                                    <p className="mt-1 text-xs text-clinic-muted">
+                                        Times in UTC
+                                    </p>
+                                </div>
+                                <MdOutlineCalendarMonth className="text-2xl text-clinic-blue" />
+                            </div>
+                            <div className="divide-y divide-clinic-line">
+                                {isLoading && (
+                                    <div className="px-5 py-8 text-sm font-bold text-clinic-muted">
+                                        Loading today&apos;s appointments...
                                     </div>
+                                )}
+
+                                {!isLoading &&
+                                    summary?.todayAppointments.map(
+                                        appointment => (
+                                            <div
+                                                key={appointment.id}
+                                                className="grid grid-cols-[72px_1fr_150px_120px] items-center px-5 py-4">
+                                                <p className="text-sm font-bold text-clinic-ink">
+                                                    {appointment.time}
+                                                </p>
+                                                <div>
+                                                    <p className="font-bold text-clinic-ink">
+                                                        {appointment.patient}
+                                                    </p>
+                                                    <p className="text-sm text-clinic-muted">
+                                                        {appointment.treatment}
+                                                    </p>
+                                                </div>
+                                                <div>
+                                                    <span
+                                                        className={`w-fit rounded px-2 py-1 text-xs font-bold ${getDashboardToneClass(
+                                                            appointment.statusTone,
+                                                        )}`}>
+                                                        {appointment.status}
+                                                    </span>
+                                                    {appointment.paymentDue && (
+                                                        <p className="mt-2 text-xs font-bold text-rose-700">
+                                                            Payment due
+                                                        </p>
+                                                    )}
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    disabled={!access.canView}
+                                                    aria-label={`View appointment ${appointment.id} for ${appointment.patient}`}
+                                                    onClick={() =>
+                                                        setSelectedId(
+                                                            appointment.id,
+                                                        )
+                                                    }
+                                                    className={`${appointmentButtonClass} disabled:opacity-50`}>
+                                                    View
+                                                </button>
+                                            </div>
+                                        ),
+                                    )}
+
+                                {!isLoading &&
+                                    summary?.todayAppointments.length === 0 && (
+                                        <div className="px-5 py-8 text-sm font-bold text-clinic-muted">
+                                            No appointments scheduled for today.
+                                        </div>
+                                    )}
+                            </div>
+                        </div>
+
+                        <div className="space-y-6">
+                            <div className="rounded-md border border-clinic-line bg-white p-5 shadow-sm">
+                                <div className="flex items-center justify-between">
                                     <div>
-                                        <span
-                                            className={`w-fit rounded px-2 py-1 text-xs font-bold ${getDashboardToneClass(
-                                                appointment.statusTone,
-                                            )}`}>
-                                            {appointment.status}
-                                        </span>
-                                        {appointment.paymentDue && (
-                                            <p className="mt-2 text-xs font-bold text-rose-700">
-                                                Payment due
+                                        <p className="text-xs font-bold uppercase text-clinic-muted">
+                                            Revenue
+                                        </p>
+                                        <h3 className="text-lg font-extrabold text-clinic-ink">
+                                            Payment health
+                                        </h3>
+                                    </div>
+                                    <MdOutlinePayments className="text-2xl text-clinic-blue" />
+                                </div>
+                                <div className="mt-5 h-2 overflow-hidden rounded bg-clinic-canvas">
+                                    <div
+                                        className="h-full rounded bg-clinic-blue"
+                                        style={{ width: `${collectionRate}%` }}
+                                    />
+                                </div>
+                                <p className="mt-1 text-sm text-clinic-muted">
+                                    {isLoading
+                                        ? 'Loading collection rate...'
+                                        : `${summary?.collectionRate}% collected from today's appointments.`}
+                                </p>
+                            </div>
+
+                            <div className="rounded-md border border-clinic-line bg-white p-5 shadow-sm">
+                                <div className="flex items-center gap-2">
+                                    <AiOutlineClockCircle className="text-xl text-clinic-blue" />
+                                    <h3 className="font-extrabold text-clinic-ink">
+                                        Staff worklist
+                                    </h3>
+                                </div>
+                                <div className="mt-4 space-y-3">
+                                    {isLoading && (
+                                        <p className="text-sm font-bold text-clinic-muted">
+                                            Loading staff worklist...
+                                        </p>
+                                    )}
+
+                                    {!isLoading &&
+                                        summary?.staffWorklist.map(item => (
+                                            <div
+                                                key={item}
+                                                className="flex gap-3 text-sm text-clinic-muted">
+                                                <BsCheckCircleFill className="mt-0.5 shrink-0 text-clinic-teal" />
+                                                <span>{item}</span>
+                                            </div>
+                                        ))}
+
+                                    {!isLoading &&
+                                        summary?.staffWorklist.length === 0 && (
+                                            <p className="text-sm font-bold text-clinic-muted">
+                                                No staff workload items for
+                                                today.
                                             </p>
                                         )}
-                                    </div>
-                                    <button
-                                        type="button"
-                                        disabled={!access.canView}
-                                        aria-label={`View appointment ${appointment.id} for ${appointment.patient}`}
-                                        onClick={() =>
-                                            setSelectedId(appointment.id)
-                                        }
-                                        className={`${appointmentButtonClass} disabled:opacity-50`}>
-                                        View
-                                    </button>
                                 </div>
-                            ))}
-
-                        {!isLoading &&
-                            summary?.todayAppointments.length === 0 && (
-                                <div className="px-5 py-8 text-sm font-bold text-clinic-muted">
-                                    No appointments scheduled for today.
-                                </div>
-                            )}
-                    </div>
-                </div>
-
-                <div className="space-y-6">
-                    <div className="rounded-md border border-clinic-line bg-white p-5 shadow-sm">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-xs font-bold uppercase text-clinic-muted">
-                                    Revenue
-                                </p>
-                                <h3 className="text-lg font-extrabold text-clinic-ink">
-                                    Payment health
-                                </h3>
                             </div>
-                            <MdOutlinePayments className="text-2xl text-clinic-blue" />
-                        </div>
-                        <div className="mt-5 h-2 overflow-hidden rounded bg-clinic-canvas">
-                            <div
-                                className="h-full rounded bg-clinic-blue"
-                                style={{ width: `${collectionRate}%` }}
-                            />
-                        </div>
-                        <p className="mt-1 text-sm text-clinic-muted">
-                            {isLoading
-                                ? 'Loading collection rate...'
-                                : `${
-                                      summary?.collectionRate ?? 0
-                                  }% collected from today's appointments.`}
-                        </p>
-                    </div>
-
-                    <div className="rounded-md border border-clinic-line bg-white p-5 shadow-sm">
-                        <div className="flex items-center gap-2">
-                            <AiOutlineClockCircle className="text-xl text-clinic-blue" />
-                            <h3 className="font-extrabold text-clinic-ink">
-                                Staff worklist
-                            </h3>
-                        </div>
-                        <div className="mt-4 space-y-3">
-                            {isLoading && (
-                                <p className="text-sm font-bold text-clinic-muted">
-                                    Loading staff worklist...
-                                </p>
-                            )}
-
-                            {!isLoading &&
-                                summary?.staffWorklist.map(item => (
-                                    <div
-                                        key={item}
-                                        className="flex gap-3 text-sm text-clinic-muted">
-                                        <BsCheckCircleFill className="mt-0.5 shrink-0 text-clinic-teal" />
-                                        <span>{item}</span>
-                                    </div>
-                                ))}
-
-                            {!isLoading &&
-                                summary?.staffWorklist.length === 0 && (
-                                    <p className="text-sm font-bold text-clinic-muted">
-                                        No staff workload items for today.
-                                    </p>
-                                )}
                         </div>
                     </div>
                 </div>
-            </div>
+            )}
             {selectedId !== null && access.canView && (
                 <AppointmentDetails
                     key={selectedId}

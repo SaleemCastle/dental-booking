@@ -262,6 +262,7 @@ const main = async () => {
     const dashboardSummary = await dashboardService.getDashboardSummary()
     assert.equal(dashboardSummary.metrics[0].value, '01')
     assert.equal(dashboardSummary.todayAppointments[0].id, fixture.id)
+    assert.equal(dashboardSummary.todayAppointments[0].time, '23:45')
     assert.deepEqual(requests.pop(), ['get', '/api/dashboard/summary'])
     response = {
         ...response,
@@ -458,13 +459,16 @@ const main = async () => {
         moved.startsAt,
     )
 
+    let dashboardOptions
+    let dashboardHookData = dashboardSummary
     const dashboardHook = compileModule('hooks/dashboard.ts', {
         swr: {
             __esModule: true,
-            default: key => {
+            default: (key, fetcher, options) => {
                 capturedKey = key
+                dashboardOptions = options
                 return {
-                    data: dashboardSummary,
+                    data: dashboardHookData,
                     error: hookError,
                     isValidating: false,
                     mutate: async () => {},
@@ -480,6 +484,16 @@ const main = async () => {
         dashboardSummary,
     )
     assert.deepEqual(capturedKey, dashboardKey)
+    assert.equal(dashboardOptions.refreshInterval, 30000)
+    assert.equal(dashboardOptions.refreshWhenHidden, false)
+    assert.equal(dashboardOptions.refreshWhenOffline, false)
+    assert.equal(dashboardOptions.revalidateOnFocus, true)
+    assert.equal(dashboardOptions.revalidateOnReconnect, true)
+    assert.equal(dashboardOptions.revalidateIfStale, true)
+    dashboardHookData = undefined
+    assert.equal(dashboardHook.useDashboardSummary().isLoading, true)
+    assert.equal(dashboardHook.useDashboardSummary().summary, undefined)
+    dashboardHookData = dashboardSummary
     hookError = { message: 'Dashboard unavailable' }
     assert.equal(dashboardHook.useDashboardSummary().summary, undefined)
     assert.equal(
@@ -610,6 +624,64 @@ const main = async () => {
     assert.ok(html.includes('Dashboard unavailable'))
     assert.ok(html.includes('Retry dashboard'))
     assert.ok(!html.includes('Jane Doe'))
+    assert.ok(!html.includes('0% collected'))
+    assert.ok(!html.includes('No appointments scheduled for today.'))
+    dashboardUi = { canView: true, isLoading: true }
+    html = renderDashboard()
+    assert.ok(html.includes('Loading dashboard...'))
+    assert.ok(!html.includes('0% collected'))
+    assert.ok(!html.includes('Jane Doe'))
+    response = {
+        bookedToday: 0,
+        waitingRoom: 0,
+        treatmentsDone: 0,
+        unpaidInvoiceAmount: 0,
+        collectionRate: 0,
+        todayAppointments: [],
+        staffWorklist: [],
+    }
+    dashboardUi = {
+        canView: true,
+        summary: await dashboardService.getDashboardSummary(),
+        isLoading: false,
+    }
+    html = renderDashboard()
+    assert.ok(html.includes('0 appointments today'))
+    assert.ok(html.includes('No appointments scheduled for today.'))
+    assert.ok(html.includes('No staff workload items for today.'))
+    assert.ok(html.includes('0% collected'))
+    response = {
+        ...response,
+        bookedToday: 7,
+        waitingRoom: 3,
+        treatmentsDone: 2,
+        unpaidInvoiceAmount: 425.5,
+        collectionRate: 37.5,
+        todayAppointments: [fixture],
+        staffWorklist: [
+            {
+                dentistId: 9,
+                dentistName: 'Alex Rivera',
+                scheduled: 4,
+                checkedIn: 3,
+                completed: 2,
+            },
+        ],
+    }
+    const liveSummary = await dashboardService.getDashboardSummary()
+    assert.equal(liveSummary.metrics[0].value, '07')
+    assert.equal(liveSummary.metrics[1].value, '03')
+    assert.equal(liveSummary.metrics[2].value, '02')
+    dashboardUi = { canView: true, summary: liveSummary, isLoading: false }
+    html = renderDashboard()
+    assert.ok(html.includes('7 appointments today'))
+    assert.ok(html.includes('3 patients checked in'))
+    assert.ok(html.includes('2 completed today'))
+    assert.ok(html.includes('37.5% collected'))
+    assert.ok(
+        html.includes('Alex Rivera: 4 scheduled, 3 checked in, 2 completed'),
+    )
+    assert.ok(html.includes('23:45'))
 
     let detailState
     const Details = compileModule('components/AppointmentDetails.tsx', {

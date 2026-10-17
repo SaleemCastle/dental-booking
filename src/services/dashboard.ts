@@ -96,6 +96,7 @@ const formatTime = (dateTime?: string) => {
     }
 
     return date.toLocaleTimeString([], {
+        timeZone: 'UTC',
         hour: '2-digit',
         minute: '2-digit',
         hour12: false,
@@ -117,7 +118,7 @@ const formatStatus = (status?: string) => {
         case 'scheduled':
             return 'Scheduled'
         default:
-            return 'Scheduled'
+            return 'Unknown status'
     }
 }
 

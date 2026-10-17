@@ -107,6 +107,21 @@ form/detail components used by Calendar. Both entry points share the mutation
 refresh hook. The form and its parent protect pending writes with synchronous
 submission locks, and Save/Cancel/close controls are disabled during a save.
 
+Dashboard metrics, today's appointments, and staff workload all come from
+`GET /api/dashboard/summary`. Summary counts are rendered as supplied by the
+backend rather than inferred from the displayed list. The summary refreshes
+every 30 seconds while visible/online, on focus/reconnect, on return to the
+dashboard, and with Refresh dashboard. Local appointment writes invalidate the
+same user-scoped summary cache immediately. Polling also picks up other staff's
+changes and the new UTC day. Appointment times and the daily heading use UTC.
+`/dashboard` opens the same authenticated workspace as `/?tab=dashboard`.
+
+Initial loading has a progress announcement and skeletons. Failed refreshes
+hide unavailable summary content and offer retry; they do not display assumed
+zero metrics or a fake collection rate. Successful empty responses show the
+backend's actual zeros plus explicit appointment/workload empty states. Generic
+inactive search/edit/print controls are omitted from the overview.
+
 The admin role can create and update appointments. Other users need explicit
 `appointments.create` and `appointments.update` permissions; the legacy
 navigation fallback grants neither. Viewing requires `appointments.view`.
@@ -159,3 +174,7 @@ while requests are pending, and dashboard/schedule refresh after create/edit
 and status actions. Status checks cover cancellation from every active status,
 reason validation/retention, invalid-transition recovery (including a failed
 fresh read), server errors/retry, and admin/staff/read-only/403 behavior.
+Dashboard checks also exercise the legacy route, UTC display in a Bogota
+browser, nonzero backend metrics/workload, loading/error/empty states, and
+polling/focus/reconnect/manual refresh after changes made outside the UI. These
+browser checks use a mocked API; they do not establish live database behavior.

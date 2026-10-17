@@ -110,7 +110,7 @@ const MainArea = ({
                 onPatientSearchChange={onPatientSearchChange}
                 onPatientSearchClear={onPatientSearchClear}
             />
-            {!['treatments', 'calendar'].includes(currentTab) && (
+            {!['dashboard', 'treatments', 'calendar'].includes(currentTab) && (
                 <CurrentTabDetail
                     currentTab={currentTab}
                     patientTotal={patientMeta?.total}

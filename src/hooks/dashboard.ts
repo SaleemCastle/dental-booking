@@ -18,6 +18,12 @@ export const useDashboardSummary = () => {
         ApiError
     >(canView ? dashboardSummaryKey(user) : null, getDashboardSummary, {
         shouldRetryOnError: false,
+        refreshInterval: 30000,
+        refreshWhenHidden: false,
+        refreshWhenOffline: false,
+        revalidateOnFocus: true,
+        revalidateOnReconnect: true,
+        revalidateIfStale: true,
     })
     return {
         canView,

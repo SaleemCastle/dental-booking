@@ -44,6 +44,7 @@ let socket, send, releaseWrite
 let failure = 0
 let holdWrites = false
 let dashboardFailure = false
+let dashboardDelay = 0
 let actor = 'staff'
 let statusFailure = 0
 let externalStatus = null
@@ -228,6 +229,7 @@ const run = async () => {
                 else if (url.pathname === '/api/treatments')
                     data = { treatments }
                 else if (url.pathname === '/api/dashboard/summary') {
+                    if (dashboardDelay) await delay(dashboardDelay)
                     if (dashboardFailure) {
                         status = 500
                         message = 'Dashboard unavailable.'
@@ -243,10 +245,36 @@ const run = async () => {
                             treatmentsDone: daily.filter(
                                 row => row.status === 'completed',
                             ).length,
-                            unpaidInvoiceAmount: 0,
-                            collectionRate: 0,
+                            unpaidInvoiceAmount: 275.25,
+                            collectionRate: daily.length ? 64.5 : 0,
                             todayAppointments: daily.map(resource),
-                            staffWorklist: [],
+                            staffWorklist: providers
+                                .map(provider => ({
+                                    dentistId: provider.id,
+                                    dentistName: provider.name,
+                                    scheduled: daily.filter(
+                                        row =>
+                                            row.dentist_id === provider.id &&
+                                            row.status === 'scheduled',
+                                    ).length,
+                                    checkedIn: daily.filter(
+                                        row =>
+                                            row.dentist_id === provider.id &&
+                                            row.status === 'checked_in',
+                                    ).length,
+                                    completed: daily.filter(
+                                        row =>
+                                            row.dentist_id === provider.id &&
+                                            row.status === 'completed',
+                                    ).length,
+                                }))
+                                .filter(
+                                    provider =>
+                                        provider.scheduled +
+                                            provider.checkedIn +
+                                            provider.completed >
+                                        0,
+                                ),
                         }
                     }
                 } else if (
@@ -462,6 +490,9 @@ const run = async () => {
     }
     await send('Runtime.enable')
     await send('Page.enable')
+    await send('Emulation.setTimezoneOverride', {
+        timezoneId: 'America/Bogota',
+    })
     await send('Fetch.enable', { patterns: [{ urlPattern: `${apiOrigin}/*` }] })
     const evaluate = async expression => {
         const result = await send('Runtime.evaluate', {
@@ -476,8 +507,8 @@ const run = async () => {
             )
         return result.result.value
     }
-    const waitFor = async expression => {
-        for (let attempt = 0; attempt < 300; attempt++) {
+    const waitFor = async (expression, timeout = 30000) => {
+        for (let attempt = 0; attempt < Math.ceil(timeout / 100); attempt++) {
             if (await evaluate(`Boolean(${expression})`)) return
             await delay(100)
         }
@@ -542,8 +573,34 @@ const run = async () => {
         resolve()
     }
 
-    await send('Page.navigate', { url: `${origin}/?tab=dashboard` })
+    dashboardDelay = 800
+    await send('Page.navigate', { url: `${origin}/dashboard` })
+    await waitFor(`document.body.innerText.includes('Loading dashboard...')`)
+    assert.equal(
+        await evaluate(`document.body.innerText.includes('0% collected')`),
+        false,
+    )
     await waitFor(`document.body.innerText.includes('1 appointments today')`)
+    dashboardDelay = 0
+    await waitFor(
+        `location.pathname === '/' && new URL(location.href).searchParams.get('tab') === 'dashboard'`,
+    )
+    assert.equal(
+        await evaluate(
+            `document.body.innerText.includes("You're logged in!") || document.body.innerText.includes('Edit Patient')`,
+        ),
+        false,
+    )
+    assert.ok(
+        await evaluate(
+            `document.body.innerText.includes('64.5% collected') && document.body.innerText.includes('Alex Rivera: 1 scheduled, 0 checked in, 0 completed')`,
+        ),
+    )
+    assert.ok(
+        await evaluate(
+            `document.querySelector('[aria-label^="View appointment 11 "]').closest('div.grid').textContent.includes('09:00')`,
+        ),
+    )
     await clickText('Book appointment')
     await waitFor(
         `document.querySelector('#appointment-patient_id option[value="11"]') && document.querySelector('#appointment-dentist_id option[value="21"]') && document.querySelector('#appointment-treatment_id option[value="31"]') && document.querySelector('#appointment-room_id option[value="51"]')`,
@@ -697,6 +754,12 @@ const run = async () => {
     dashboardFailure = true
     await send('Page.reload', { ignoreCache: true })
     await waitFor(`document.body.innerText.includes('Dashboard unavailable.')`)
+    assert.equal(
+        await evaluate(
+            `document.body.innerText.includes('0% collected') || document.querySelector('[aria-label^="View appointment 12 "]') !== null`,
+        ),
+        false,
+    )
     dashboardFailure = false
     await clickText('Retry dashboard')
     await waitFor(`document.body.innerText.includes('1 appointments today')`)
@@ -988,9 +1051,61 @@ const run = async () => {
     )
     await assertActions([])
     statusFailure = 0
+    await close()
+
+    // Empty daily data renders genuine backend zeros, then other staff's changes
+    // arrive through polling, focus, and reconnect without a local mutation.
+    const dailyRow = rows.find(row => row.id === 12)
+    dailyRow.startsAt = `${tomorrow}T11:00:00.000Z`
+    await clickText('Refresh dashboard')
+    await waitFor(
+        `document.body.innerText.includes('No appointments scheduled for today.') && document.body.innerText.includes('No staff workload items for today.')`,
+    )
+    assert.ok(
+        await evaluate(
+            `document.body.innerText.includes('0 appointments today') && document.body.innerText.includes('0% collected')`,
+        ),
+    )
+    dailyRow.startsAt = `${today}T11:00:00.000Z`
+    dailyRow.status = 'checked_in'
+    const beforePoll = dashboardReads()
+    await waitFor(
+        `document.body.innerText.includes('1 patients checked in') && document.body.innerText.includes('Alex Rivera: 0 scheduled, 1 checked in, 0 completed')`,
+        45000,
+    )
+    assert.ok(
+        dashboardReads() > beforePoll,
+        'Visible dashboard polls the backend',
+    )
+    await assertRowStatus('Checked in')
+    dailyRow.status = 'cancelled'
+    await evaluate(`window.dispatchEvent(new Event('focus'))`)
+    await assertRowStatus('Cancelled')
+    await waitFor(
+        `document.body.innerText.includes('0 patients checked in') && document.body.innerText.includes('No staff workload items for today.')`,
+    )
+    dailyRow.status = 'completed'
+    await delay(2100)
+    await evaluate(`window.dispatchEvent(new Event('online'))`)
+    await assertRowStatus('Completed')
+    await waitFor(
+        `document.body.innerText.includes('1 completed today') && document.body.innerText.includes('Alex Rivera: 0 scheduled, 0 checked in, 1 completed')`,
+    )
+    dashboardFailure = true
+    await clickText('Refresh dashboard')
+    await waitFor(`document.body.innerText.includes('Dashboard unavailable.')`)
+    assert.equal(
+        await evaluate(
+            `document.body.innerText.includes('0% collected') || document.querySelector('[aria-label^="View appointment 12 "]') !== null`,
+        ),
+        false,
+    )
+    dashboardFailure = false
+    await clickText('Retry dashboard')
+    await assertRowStatus('Completed')
     assert.deepEqual(browserErrors, [])
     console.log(
-        'Appointment browser checks passed: create/edit, all status actions, cancellation reasons, pending/duplicate protection, dashboard/schedule refresh, stale transition recovery, and admin/staff/read-only/403 scenarios.',
+        'Browser checks passed: live dashboard metrics/list/workload, UTC and legacy URL, polling/focus/reconnect/manual refresh, loading/error/empty states, create/edit, status actions, stale transition recovery, and role scenarios.',
     )
 }
 
