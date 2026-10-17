@@ -1,4 +1,10 @@
 import { apiClient } from '../lib/api'
+import type { AuthUser } from '../lib/auth-session'
+
+export const dashboardSummaryKey = (user: AuthUser | null) => [
+    'dashboard-summary',
+    user,
+]
 
 type DashboardTone = 'sky' | 'amber' | 'mint' | 'rose'
 

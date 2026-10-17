@@ -9,6 +9,9 @@ interface TreatmentSelectorProps {
     required?: boolean
     errorMessage?: string
     id?: string
+    name?: string
+    retainedTreatment?: { id: number; name: string }
+    onRetainTreatment?: () => void
 }
 
 // Appointment forms can use the selected ID, duration_minutes, and price.
@@ -19,6 +22,9 @@ const TreatmentSelector = ({
     required = false,
     errorMessage,
     id,
+    name = 'treatmentId',
+    retainedTreatment,
+    onRetainTreatment,
 }: TreatmentSelectorProps) => {
     const generatedId = useId()
     const selectId = id ?? `appointment-treatment-${generatedId}`
@@ -35,6 +41,7 @@ const TreatmentSelector = ({
     )
     const selectedAvailable =
         value === null ||
+        value === retainedTreatment?.id ||
         activeTreatments.some(treatment => treatment.id === value)
     const message = !canView
         ? 'You do not have permission to view treatments.'
@@ -72,7 +79,7 @@ const TreatmentSelector = ({
             </label>
             <select
                 id={selectId}
-                name="treatmentId"
+                name={name}
                 value={selectedAvailable ? value ?? '' : ''}
                 required={required}
                 disabled={
@@ -80,20 +87,40 @@ const TreatmentSelector = ({
                     !canView ||
                     isLoading ||
                     Boolean(error) ||
-                    activeTreatments.length === 0
+                    (activeTreatments.length === 0 &&
+                        !retainedTreatment &&
+                        value === null)
                 }
                 aria-invalid={Boolean(message)}
                 aria-describedby={`${selectId}-message`}
-                onChange={event =>
+                onChange={event => {
+                    if (
+                        retainedTreatment &&
+                        Number(event.target.value) === retainedTreatment.id &&
+                        !activeTreatments.some(
+                            item => item.id === retainedTreatment.id,
+                        )
+                    ) {
+                        onRetainTreatment?.()
+                        return
+                    }
                     onChange(
                         activeTreatments.find(
                             treatment =>
                                 treatment.id === Number(event.target.value),
                         ) ?? null,
                     )
-                }
+                }}
                 className="mt-2 block w-full rounded-md border-clinic-line bg-white text-sm text-clinic-ink focus:border-clinic-blue focus:ring-clinic-blue/20 disabled:opacity-50">
                 <option value="">{placeholder}</option>
+                {retainedTreatment &&
+                    !activeTreatments.some(
+                        item => item.id === retainedTreatment.id,
+                    ) && (
+                        <option value={retainedTreatment.id}>
+                            {retainedTreatment.name} (current)
+                        </option>
+                    )}
                 {activeTreatments.map(treatment => (
                     <option key={treatment.id} value={treatment.id}>
                         {treatment.name} · {treatment.duration_minutes} min ·{' '}

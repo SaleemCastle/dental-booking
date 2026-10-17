@@ -4,6 +4,9 @@ import { AuthUser } from './auth-session'
 export type Permission =
     | 'dashboard.view'
     | 'appointments.view'
+    | 'appointments.create'
+    | 'appointments.update'
+    | 'appointments.delete'
     | 'patients.view'
     | 'patients.update'
     | 'patients.archive'
@@ -56,6 +59,9 @@ const rolePermissions: Record<string, Permission[]> = {
     admin: [
         'dashboard.view',
         'appointments.view',
+        'appointments.create',
+        'appointments.update',
+        'appointments.delete',
         'patients.view',
         'patients.update',
         'patients.archive',

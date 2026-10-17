@@ -55,9 +55,9 @@ deactivation action. Editing the active checkbox also uses the documented
 update permission. Legacy sessions without roles or permissions receive no
 treatment permissions. The backend remains responsible for enforcing access.
 
-`TreatmentSelector` provides active treatments for appointment forms. The
-current Calendar module has no booking form; use this component when adding
-that form instead of maintaining a separate list or hardcoded options:
+`TreatmentSelector` provides active treatments for the appointment form in
+Calendar. Reuse this component instead of maintaining a separate list or
+hardcoded options:
 
 ```tsx
 import TreatmentSelector from '../components/TreatmentSelector'
@@ -84,3 +84,59 @@ display their stored treatment references independently of this selector.
 
 Run `npm run test:treatments` for the API, validation, cache, and rendering
 checks, and `npm run test:permissions` for catalog authorization checks.
+
+## Appointment Workflow
+
+Calendar (`/?tab=calendar`) displays a daily schedule ordered by start time,
+with provider and status filters. Dates, time inputs, and displayed ranges use
+UTC to match the API's `date` filter. Overnight appointments show the end date;
+the daily list includes appointments that **start** on the selected date.
+
+`src/services/appointments.ts` normalizes canonical numeric identifiers and
+display fields. Writes use canonical snake_case fields. Editing sends only
+changed fields, preserving historical patient/treatment links and workflow
+timestamps. Moving a booking updates the previous and new day caches and the
+detail cache. All successful appointment mutations also invalidate the current
+user's dashboard summary when they have `dashboard.view`. Mounted dashboards
+refresh immediately; an unmounted dashboard fetches fresh data on return.
+Failed list/dashboard refreshes render an error with retry without treating a
+successful save as a failed mutation.
+
+The dashboard's Book appointment and View buttons open the same appointment
+form/detail components used by Calendar. Both entry points share the mutation
+refresh hook. The form and its parent protect pending writes with synchronous
+submission locks, and Save/Cancel/close controls are disabled during a save.
+
+The admin role can create and update appointments. Other users need explicit
+`appointments.create` and `appointments.update` permissions; the legacy
+navigation fallback grants neither. Viewing requires `appointments.view`.
+Patient selection additionally requires `patients.view`; treatment selection
+requires `treatments.view`. Booking can omit treatment and location. Provider
+choices use `GET /api/dentists`; rooms with nested chairs come from
+`GET /api/appointment-locations`. Selector failures preserve existing links.
+
+Room changes clear the chair. Location changes submit both `room_id` and
+`chair_id`, including nulls when clearing a reservation. The location selector
+lists inventory; only the save endpoint determines availability. Provider,
+room, chair, and time conflict messages are shown next to their fields and in
+the form's error summary.
+
+Detail actions follow the backend workflow: check in, start treatment,
+complete, cancel, and mark no-show. Cancellation offers an optional reason and
+retains history. Closed appointments expose descriptive edits and lock
+scheduling fields. The UI deliberately uses cancellation rather than physical
+deletion.
+
+Run `npm run test:appointments` for API requests, UTC and overnight ranges,
+partial update payloads, location consistency, workflow rules, permissions,
+cross-date cache updates, dashboard refresh/permissions, and schedule
+loading/error/empty rendering.
+
+For browser regression checks, start the app and run
+`npm run test:appointments:browser` (Node 22+ and Chrome, Edge, or Chromium).
+Set `APPOINTMENT_TEST_URL` to use another frontend URL, `APPOINTMENT_TEST_API_URL`
+to match its configured backend URL, and `BROWSER_PATH` for another browser
+executable. Backend requests are intercepted and mocked: the check never
+creates or edits live appointments. It verifies canonical numeric selections,
+required-field validation, backend conflict/server errors, double submission
+while requests are pending, and dashboard/schedule refresh after create/edit.

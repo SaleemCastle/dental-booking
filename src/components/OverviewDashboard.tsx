@@ -1,47 +1,80 @@
-import React, { useEffect, useState } from 'react'
+import React, { useRef, useState } from 'react'
 import { BsCheckCircleFill } from 'react-icons/bs'
 import { MdOutlineCalendarMonth, MdOutlinePayments } from 'react-icons/md'
 import { AiOutlineClockCircle } from 'react-icons/ai'
+import { getDashboardToneClass } from '../services/dashboard'
+import { useDashboardSummary } from '../hooks/dashboard'
 import {
-    DashboardSummary,
-    getDashboardSummary,
-    getDashboardToneClass,
-} from '../services/dashboard'
+    useAppointmentMutationSync,
+    useAppointmentPermissions,
+} from '../hooks/appointments'
+import {
+    Appointment,
+    AppointmentPayload,
+    createAppointment,
+    updateAppointment,
+} from '../services/appointments'
+import { appointmentStatusLabels, utcToday } from '../lib/appointment-workflow'
+import AppointmentDetails from './AppointmentDetails'
+import AppointmentForm from './AppointmentForm'
+import {
+    appointmentButtonClass,
+    appointmentPrimaryClass,
+} from './AppointmentDialog'
 
 const OverviewDashboard = () => {
-    const [summary, setSummary] = useState<DashboardSummary | null>(null)
-    const [isLoading, setIsLoading] = useState(true)
-    const [error, setError] = useState('')
+    const {
+        summary,
+        error,
+        isLoading,
+        isValidating,
+        retry,
+        canView,
+    } = useDashboardSummary()
+    const access = useAppointmentPermissions()
+    const syncAppointment = useAppointmentMutationSync()
+    const [selectedId, setSelectedId] = useState<number | null>(null)
+    const [editor, setEditor] = useState<{
+        appointment: Appointment | null
+    } | null>(null)
+    const [notice, setNotice] = useState('')
+    const savingRef = useRef(false)
 
-    useEffect(() => {
-        let isMounted = true
-
-        getDashboardSummary()
-            .then(dashboardSummary => {
-                if (!isMounted) {
-                    return
-                }
-
-                setSummary(dashboardSummary)
-                setError('')
-            })
-            .catch(() => {
-                if (!isMounted) {
-                    return
-                }
-
-                setError('Unable to load dashboard summary.')
-            })
-            .finally(() => {
-                if (isMounted) {
-                    setIsLoading(false)
-                }
-            })
-
-        return () => {
-            isMounted = false
+    const save = async (payload: Partial<AppointmentPayload>) => {
+        if (
+            savingRef.current ||
+            !editor ||
+            (editor.appointment ? !access.canUpdate : !access.canCreate)
+        ) {
+            throw new Error(
+                'You do not have permission to save this appointment.',
+            )
         }
-    }, [])
+        savingRef.current = true
+        try {
+            const saved = editor.appointment
+                ? await updateAppointment(editor.appointment.id, payload)
+                : await createAppointment(payload as AppointmentPayload)
+            await syncAppointment(saved, editor.appointment)
+            setEditor(null)
+            setSelectedId(saved.id)
+            setNotice(
+                editor.appointment
+                    ? 'Appointment updated.'
+                    : 'Appointment booked.',
+            )
+        } finally {
+            savingRef.current = false
+        }
+    }
+
+    if (!canView) {
+        return (
+            <p role="alert" className="p-8 text-sm text-clinic-muted">
+                You do not have permission to view the dashboard.
+            </p>
+        )
+    }
 
     const collectionRate = Math.min(
         Math.max(summary?.collectionRate ?? 0, 0),
@@ -50,6 +83,29 @@ const OverviewDashboard = () => {
 
     return (
         <section className="px-8 py-6">
+            <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+                <h1 className="text-xl font-extrabold text-clinic-ink">
+                    Clinic overview
+                </h1>
+                {access.canCreate && (
+                    <button
+                        type="button"
+                        className={appointmentPrimaryClass}
+                        onClick={() => {
+                            setNotice('')
+                            setEditor({ appointment: null })
+                        }}>
+                        Book appointment
+                    </button>
+                )}
+            </div>
+            {notice && (
+                <p
+                    role="status"
+                    className="mb-4 rounded-md bg-clinic-mint p-3 text-sm text-clinic-ink">
+                    {notice}
+                </p>
+            )}
             <div className="grid grid-cols-4 gap-4">
                 {isLoading
                     ? Array.from({ length: 4 }).map((_, index) => (
@@ -82,8 +138,17 @@ const OverviewDashboard = () => {
             </div>
 
             {error && (
-                <div className="mt-6 rounded-md border border-clinic-rose bg-white p-4 text-sm font-bold text-rose-700 shadow-sm">
-                    {error}
+                <div
+                    role="alert"
+                    className="mt-6 rounded-md border border-clinic-rose bg-white p-4 text-sm font-bold text-rose-700 shadow-sm">
+                    <p>{error.message}</p>
+                    <button
+                        type="button"
+                        disabled={isValidating}
+                        className={`${appointmentButtonClass} mt-3`}
+                        onClick={() => void retry()}>
+                        Retry dashboard
+                    </button>
                 </div>
             )}
 
@@ -129,7 +194,14 @@ const OverviewDashboard = () => {
                                         )}`}>
                                         {appointment.status}
                                     </span>
-                                    <button className="rounded-md border border-clinic-line px-3 py-2 text-sm font-bold text-clinic-muted hover:border-clinic-blue hover:text-clinic-blue">
+                                    <button
+                                        type="button"
+                                        disabled={!access.canView}
+                                        aria-label={`View appointment ${appointment.id} for ${appointment.patient}`}
+                                        onClick={() =>
+                                            setSelectedId(appointment.id)
+                                        }
+                                        className={`${appointmentButtonClass} disabled:opacity-50`}>
                                         View
                                     </button>
                                 </div>
@@ -166,7 +238,9 @@ const OverviewDashboard = () => {
                         <p className="mt-1 text-sm text-clinic-muted">
                             {isLoading
                                 ? 'Loading collection rate...'
-                                : `${summary?.collectionRate ?? 0}% collected from today's appointments.`}
+                                : `${
+                                      summary?.collectionRate ?? 0
+                                  }% collected from today's appointments.`}
                         </p>
                     </div>
 
@@ -194,15 +268,47 @@ const OverviewDashboard = () => {
                                     </div>
                                 ))}
 
-                            {!isLoading && summary?.staffWorklist.length === 0 && (
-                                <p className="text-sm font-bold text-clinic-muted">
-                                    No staff workload items for today.
-                                </p>
-                            )}
+                            {!isLoading &&
+                                summary?.staffWorklist.length === 0 && (
+                                    <p className="text-sm font-bold text-clinic-muted">
+                                        No staff workload items for today.
+                                    </p>
+                                )}
                         </div>
                     </div>
                 </div>
             </div>
+            {selectedId !== null && access.canView && (
+                <AppointmentDetails
+                    key={selectedId}
+                    id={selectedId}
+                    onClose={() => setSelectedId(null)}
+                    onEdit={appointment => {
+                        if (access.canUpdate) {
+                            setSelectedId(null)
+                            setEditor({ appointment })
+                        }
+                    }}
+                    onUpdated={async (saved, previous) => {
+                        await syncAppointment(saved, previous)
+                        setNotice(
+                            `Appointment ${appointmentStatusLabels[
+                                saved.status
+                            ].toLowerCase()}.`,
+                        )
+                    }}
+                />
+            )}
+            {editor &&
+                (editor.appointment ? access.canUpdate : access.canCreate) && (
+                    <AppointmentForm
+                        key={editor.appointment?.id ?? 'new'}
+                        appointment={editor.appointment}
+                        date={utcToday()}
+                        onClose={() => setEditor(null)}
+                        onSave={save}
+                    />
+                )}
         </section>
     )
 }
