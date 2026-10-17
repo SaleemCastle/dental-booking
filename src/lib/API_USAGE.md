@@ -215,3 +215,90 @@ All backend requests are mocked. Browser checks cover create/edit/link/detach/
 delete, duplicate submissions, relationship errors, failed refreshes, collaborative
 attribution, pagination, archived patients, provider/appointment loading failures,
 and role restrictions. They do not mutate live records or verify database behavior.
+
+## Assigned Tasks and Follow-ups
+
+The dashboard's My tasks worklist uses `GET /api/tasks?assigned_to_me=1`.
+It is independent of the summary's provider workload and remains usable if the
+summary endpoint fails. All task statuses are included initially; due-date and
+status filters combine on the backend before pagination. Boolean filters are
+sent as `1` or `0`, and changing filters resets the page. The API's due-date/ID
+ordering and pagination metadata are preserved.
+
+Due today and overdue refer to the clinic's UTC calendar date, not the browser's
+timezone or a rolling 24-hour period. Only pending and in-progress tasks receive
+due/overdue badges. Completed and cancelled tasks retain their due dates without
+being presented as late work. Completion uses
+`PATCH /api/tasks/{id}/status` with only `{"status":"completed"}`; the server
+supplies completion timestamps. Only open tasks offer Mark complete in this UI.
+
+Read access requires `tasks.view`, and completion additionally requires
+`tasks.update`. Admin and M1 resource/action wildcard grants are supported.
+Assignment and other staff roles grant no task access. Clinical-note writes
+continue to use their separate role-only policy. Related-patient and appointment
+buttons require their own read permissions. Patient links load detail by canonical
+ID, including archived records outside the current list page, with loading/error/
+retry states. Appointments open in the existing detail workflow.
+
+Task caches include the session, filters, page, and current UTC date. Successful
+completion updates the current list immediately, refreshes it, and invalidates
+the user's dashboard summary. A completed task leaves due-date/open-status
+filters immediately; a page that becomes empty at the end of the list returns
+to the new last page. Failed refreshes preserve successful completion and offer
+retry. Task and dashboard refresh buttons, 30-second visible/online polling,
+focus/reconnect, and returning to the dashboard fetch current work. Task errors
+do not replace working appointment/metric sections. A read 403 hides cached task
+content, and a write 403 removes completion controls.
+
+Run `npm run test:tasks` for API envelopes/filters, wildcard/role permissions,
+UTC midnight boundaries, completion locking/cache refresh, and panel states.
+With the app running, `npm run test:tasks:browser` uses Node 22+ and Chrome,
+Edge, or Chromium. Override `TASKS_TEST_URL`, `TASKS_TEST_API_URL`, or `BROWSER_PATH`
+as needed. The browser checks intercept all backend requests; they cover assigned
+scope, due/status filters, UTC rollover in a Bogota browser, context links/errors,
+completion and failed refreshes, pagination shrinkage, and permission scenarios.
+They do not change live records or verify database behavior.
+
+### Patient follow-up workflow (M6)
+
+Patient detail includes a Follow-ups & tasks panel with a paginated patient
+timeline. It requests `GET /api/tasks?patient_id={id}` without assignment or status
+filters, so staff see related work across assignees and retain completed tasks.
+Loaded entries are deduplicated and ordered by completion/creation time. Use Load
+more follow-ups to retrieve further pages (the API pages are ordered by due date).
+Completed entries show the server's `completed_at` timestamp and never show an
+overdue badge or completion action. Archived patients retain their task history.
+
+Patient detail requires `patients.view`; task reads, creation, and completion
+additionally require `tasks.view`, `tasks.create`, and `tasks.update` respectively.
+No staff role or assignment implicitly grants access. A read 403 hides cached
+entries; a create/update 403 disables only the denied operation until the panel
+is reopened. Loading, empty, validation, permission, missing-record, network, and
+server-error states include actionable feedback and refresh/retry controls.
+
+Create follow-up sends `POST /api/tasks` with `patient_id`, nullable
+`appointment_id`, `assignee_id`, date-only `due_date`, `priority`, and `description`.
+Priority is low/normal/high/urgent. The initial assignee is the authenticated user;
+the assignee directory uses authenticated `GET /api/users` (`data.users`, user IDs,
+not dentist IDs). Only ID/name are retained by the form's directory cache. Directory
+failure allows self-assignment and retry. Optional appointment choices use the
+existing appointment endpoint, filtered to the current patient across all visit
+statuses, and require `appointments.view`. Appointment failure still permits an
+unlinked follow-up. Past due dates are valid; impossible dates, blank descriptions,
+and descriptions over 16,000 characters are rejected. Backend 422 field errors
+retain input and focus the first invalid field.
+
+Synchronous locks prevent duplicate creates/completions. Successful responses
+update patient history before refreshing all loaded pages and invalidating the
+session's dashboard summary. Refresh failures retain the saved entry and report
+that the write succeeded. Patient caches include the authenticated session and
+patient ID, revalidate on mount/focus/reconnect, and never expose another patient's
+tasks. Returning to My tasks revalidates its assigned list.
+
+`npm run test:tasks` includes patient follow-up service, validation, hook, cache,
+and permission regression checks. With the app running,
+`npm run test:follow-ups:browser` exercises creation with and without appointment
+context, staff assignment, completion history, patient isolation, pagination,
+validation, duplicate protection, refresh failures, and permission changes. Set
+`FOLLOW_UPS_TEST_URL`, `FOLLOW_UPS_TEST_API_URL`, or `BROWSER_PATH` as needed. Backend
+requests are mocked; these checks do not verify a deployed backend/database.

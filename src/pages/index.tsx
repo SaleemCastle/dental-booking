@@ -49,6 +49,7 @@ const Home: NextPage = () => {
         null,
     )
     const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null)
+    const [patientDetailVersion, setPatientDetailVersion] = useState(0)
     const [patientDetailState, setPatientDetailState] = useState({
         isLoading: false,
         errorMessage: '',
@@ -167,6 +168,24 @@ const Home: NextPage = () => {
         })
     }
 
+    const handleOpenRelatedPatient = (id: number) => {
+        if (!canAccessModuleId(user, 'patient_list')) return
+        setSelectedPatient(null)
+        setSelectedPatientId(id)
+        setPatientDetailVersion(value => value + 1)
+        setPatientDetailState({ isLoading: true, errorMessage: '' })
+        setPatientMutationState({
+            isSaving: false,
+            isArchiving: false,
+            errorMessage: '',
+        })
+        void router.push(
+            { pathname: '/', query: { tab: 'patient_list' } },
+            undefined,
+            { shallow: true },
+        )
+    }
+
     const handlePatientCreated = () => {
         setPatientPage(1)
         void loadPatients({ page: 1 })
@@ -259,6 +278,8 @@ const Home: NextPage = () => {
 
         let isCurrent = true
 
+        setPatientDetailState({ isLoading: true, errorMessage: '' })
+
         getPatient(selectedPatientId)
             .then(patient => {
                 if (!isCurrent) {
@@ -283,7 +304,7 @@ const Home: NextPage = () => {
         return () => {
             isCurrent = false
         }
-    }, [selectedPatientId])
+    }, [selectedPatientId, patientDetailVersion])
 
     useEffect(() => {
         if (!canRunProtectedApi(status)) {
@@ -360,6 +381,10 @@ const Home: NextPage = () => {
                             handleArchivedPatientFilterChange
                         }
                         onPatientSelect={handlePatientSelect}
+                        onOpenRelatedPatient={handleOpenRelatedPatient}
+                        onPatientDetailRetry={() =>
+                            setPatientDetailVersion(value => value + 1)
+                        }
                         onPatientDetailClose={handlePatientDetailClose}
                         onPatientUpdate={handlePatientUpdate}
                         onPatientArchive={handlePatientArchive}

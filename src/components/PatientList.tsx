@@ -8,6 +8,7 @@ import { formatDate } from '../utils'
 import { FiX } from 'react-icons/fi'
 import { PatientPayload } from '../services/patients'
 import PatientClinicalNotes from './PatientClinicalNotes'
+import PatientFollowUps from './PatientFollowUps'
 
 interface PatientListProps {
     meta?: PaginationMeta
@@ -29,6 +30,7 @@ interface PatientListProps {
     }
     onSelectPatient?: (patient: Patient) => void
     onCloseDetail?: () => void
+    onDetailRetry?: () => void
     onUpdatePatient?: (payload: Partial<PatientPayload>) => void | Promise<void>
     onArchivePatient?: () => void | Promise<void>
     onPageChange?: (page: number) => void
@@ -134,6 +136,7 @@ const PatientList = ({
     permissions,
     onSelectPatient,
     onCloseDetail,
+    onDetailRetry,
     onUpdatePatient,
     onArchivePatient,
     onPageChange,
@@ -296,7 +299,7 @@ const PatientList = ({
     return (
         <section
             className={`grid gap-5 px-8 py-5 ${
-                selectedPatient
+                selectedPatient || isDetailLoading || detailErrorMessage
                     ? 'xl:grid-cols-[minmax(0,1fr)_440px]'
                     : 'grid-cols-1'
             }`}>
@@ -391,6 +394,41 @@ const PatientList = ({
                 </div>
             </div>
 
+            {!selectedPatient && (isDetailLoading || detailErrorMessage) && (
+                <aside
+                    className="rounded-md border border-clinic-line bg-white p-5 shadow-sm"
+                    aria-label="Patient detail">
+                    <div className="flex justify-between gap-3">
+                        <h3 className="text-sm font-extrabold text-clinic-ink">
+                            Patient detail
+                        </h3>
+                        <button
+                            type="button"
+                            onClick={onCloseDetail}
+                            aria-label="Close patient detail"
+                            className="text-clinic-muted">
+                            <FiX />
+                        </button>
+                    </div>
+                    {isDetailLoading ? (
+                        <p
+                            role="status"
+                            className="mt-4 text-sm text-clinic-muted">
+                            Loading patient detail…
+                        </p>
+                    ) : (
+                        <div role="alert" className="mt-4 text-sm text-red-700">
+                            <p>{detailErrorMessage}</p>
+                            <button
+                                type="button"
+                                onClick={onDetailRetry}
+                                className="mt-3 rounded-md border border-clinic-line px-3 py-2 font-bold">
+                                Retry patient detail
+                            </button>
+                        </div>
+                    )}
+                </aside>
+            )}
             {selectedPatient ? (
                 <aside className="rounded-md border border-clinic-line bg-white p-5 shadow-sm">
                     <div className="space-y-5">
@@ -628,6 +666,12 @@ const PatientList = ({
                             </div>
                         )}
 
+                        {!isDetailLoading && !detailErrorMessage && (
+                            <PatientFollowUps
+                                key={`follow-ups-${selectedPatient.id}`}
+                                patient={selectedPatient}
+                            />
+                        )}
                         {!isDetailLoading && !detailErrorMessage && (
                             <PatientClinicalNotes
                                 key={selectedPatient.id}
