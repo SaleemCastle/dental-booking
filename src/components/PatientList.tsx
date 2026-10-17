@@ -8,6 +8,7 @@ import { formatDate } from '../utils'
 import { FiX } from 'react-icons/fi'
 import { PatientPayload } from '../services/patients'
 import PatientClinicalNotes from './PatientClinicalNotes'
+import PatientFollowUps from './PatientFollowUps'
 
 interface PatientListProps {
     meta?: PaginationMeta
@@ -665,6 +666,12 @@ const PatientList = ({
                             </div>
                         )}
 
+                        {!isDetailLoading && !detailErrorMessage && (
+                            <PatientFollowUps
+                                key={`follow-ups-${selectedPatient.id}`}
+                                patient={selectedPatient}
+                            />
+                        )}
                         {!isDetailLoading && !detailErrorMessage && (
                             <PatientClinicalNotes
                                 key={selectedPatient.id}

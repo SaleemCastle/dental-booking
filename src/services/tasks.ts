@@ -32,6 +32,28 @@ export interface TaskPage {
     tasks: Task[]
     meta: PaginationMeta
 }
+export interface TaskPayload {
+    patient_id: number
+    appointment_id: number | null
+    assignee_id: number
+    due_date: string
+    priority: TaskPriority
+    description: string
+}
+export interface TaskAssignee {
+    id: number
+    name: string
+}
+export const getTaskAssignees = async (): Promise<TaskAssignee[]> => {
+    const data = await apiClient.getData<{ users: TaskAssignee[] }>(
+        '/api/users',
+    )
+    // Keep only the directory fields needed by the task form in its cache.
+    return data.users.map(({ id, name }) => ({ id, name }))
+}
+export const createTask = async (payload: TaskPayload): Promise<Task> =>
+    (await apiClient.postData<{ task: Task }>('/api/tasks', payload)).task
+
 export const getTasks = async ({
     assigned_to_me,
     overdue,

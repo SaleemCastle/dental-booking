@@ -166,7 +166,10 @@ const onRequest = async ({ method, url, payload }) => {
                   },
               }
     if (url.pathname === '/api/tasks' && method === 'GET') {
-        assert.equal(url.searchParams.get('assigned_to_me'), '1')
+        assert.ok(
+            url.searchParams.get('assigned_to_me') === '1' ||
+                url.searchParams.has('patient_id'),
+        )
         assert.ok(
             !['true', 'false'].some(value =>
                 [...url.searchParams.values()].includes(value),
@@ -177,7 +180,12 @@ const onRequest = async ({ method, url, payload }) => {
         if (listFailure)
             return { status: listFailure, message: 'Worklist unavailable.' }
         const filtered = tasks
-            .filter(task => task.assignee_id === 90)
+            .filter(task =>
+                url.searchParams.get('assigned_to_me') === '1'
+                    ? task.assignee_id === 90
+                    : task.patient_id ===
+                      Number(url.searchParams.get('patient_id')),
+            )
             .filter(
                 task =>
                     !url.searchParams.get('status') ||
