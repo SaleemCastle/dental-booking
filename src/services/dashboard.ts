@@ -1,4 +1,10 @@
 import { apiClient } from '../lib/api'
+import type { AuthUser } from '../lib/auth-session'
+
+export const dashboardSummaryKey = (user: AuthUser | null) => [
+    'dashboard-summary',
+    user,
+]
 
 type DashboardTone = 'sky' | 'amber' | 'mint' | 'rose'
 
@@ -16,6 +22,7 @@ export interface DashboardAppointment {
     treatment: string
     status: string
     statusTone: DashboardTone
+    paymentDue: boolean
 }
 
 interface BackendDashboardAppointment {
@@ -89,49 +96,33 @@ const formatTime = (dateTime?: string) => {
     }
 
     return date.toLocaleTimeString([], {
+        timeZone: 'UTC',
         hour: '2-digit',
         minute: '2-digit',
         hour12: false,
     })
 }
 
-const formatStatus = (status?: string, paymentStatus?: string) => {
-    if (
-        status === 'completed' &&
-        (paymentStatus === 'unpaid' || paymentStatus === 'partial')
-    ) {
-        return 'Payment due'
-    }
-
+const formatStatus = (status?: string) => {
     switch (status) {
         case 'checked_in':
             return 'Checked in'
         case 'in_progress':
             return 'In progress'
         case 'completed':
-            return 'Finished'
+            return 'Completed'
         case 'cancelled':
             return 'Cancelled'
         case 'no_show':
-            return 'No show'
+            return 'No-show'
         case 'scheduled':
             return 'Scheduled'
         default:
-            return 'Scheduled'
+            return 'Unknown status'
     }
 }
 
-const getAppointmentTone = (
-    status?: string,
-    paymentStatus?: string,
-): DashboardTone => {
-    if (
-        status === 'completed' &&
-        (paymentStatus === 'unpaid' || paymentStatus === 'partial')
-    ) {
-        return 'rose'
-    }
-
+const getAppointmentTone = (status?: string): DashboardTone => {
     switch (status) {
         case 'completed':
             return 'mint'
@@ -197,11 +188,11 @@ const normalizeDashboardSummary = (
                 appointment.appointment_type ??
                 appointment.description ??
                 'Treatment',
-            status: formatStatus(appointmentStatus, appointment.paymentStatus),
-            statusTone: getAppointmentTone(
-                appointmentStatus,
-                appointment.paymentStatus,
-            ),
+            status: formatStatus(appointmentStatus),
+            statusTone: getAppointmentTone(appointmentStatus),
+            paymentDue:
+                appointmentStatus === 'completed' &&
+                ['unpaid', 'partial'].includes(appointment.paymentStatus),
         }
     }),
     staffWorklist: summary.staffWorklist.map(formatStaffWorklist),

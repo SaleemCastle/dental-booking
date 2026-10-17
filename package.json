@@ -5,12 +5,14 @@
     "scripts": {
         "dev": "next dev",
         "build": "next build",
-        "test": "npm run test:api && npm run test:auth-session && npm run test:permissions && npm run test:wizard && npm run test:treatments",
+        "test": "npm run test:api && npm run test:auth-session && npm run test:permissions && npm run test:wizard && npm run test:treatments && npm run test:appointments",
         "test:api": "node tests/api-contract.test.cjs",
         "test:auth-session": "node tests/auth-session.test.cjs",
         "test:permissions": "node tests/permissions.test.cjs",
         "test:wizard": "node tests/wizard.test.cjs",
         "test:treatments": "node tests/treatments.test.cjs",
+        "test:appointments": "node tests/appointments.test.cjs",
+        "test:appointments:browser": "node tests/appointments.browser.cjs",
         "start": "next start",
         "lint": "next lint",
         "lint:fix": "next lint --fix"
