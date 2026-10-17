@@ -144,10 +144,10 @@ export const normalizeAppointment = (
 const unwrapAppointment = (data: AppointmentResponse) =>
     normalizeAppointment('appointment' in data ? data.appointment : data)
 
-export const getAppointments = async (date: string) => {
+export const getAppointments = async (date?: string) => {
     const data = await apiClient.getData<
         AppointmentResource[] | { appointments: AppointmentResource[] }
-    >('/api/appointments', { params: { date } })
+    >('/api/appointments', { params: date ? { date } : {} })
     return (Array.isArray(data) ? data : data.appointments).map(
         normalizeAppointment,
     )

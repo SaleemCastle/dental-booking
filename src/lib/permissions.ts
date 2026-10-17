@@ -11,6 +11,7 @@ export type Permission =
     | 'patients.update'
     | 'patients.archive'
     | 'patients.medical.update'
+    | 'clinical_notes.view'
     | 'treatments.view'
     | 'treatments.create'
     | 'treatments.update'
@@ -331,6 +332,31 @@ export const getUserPermissionSet = (user: AuthUser | null) => {
     extracted.permissions.forEach(permission => permissions.add(permission))
 
     return permissions
+}
+
+// Clinical-note writes deliberately bypass general permission and wildcard
+// grants. Provider records are unrelated to authenticated user identities.
+export const getClinicalNotePermissions = (user: AuthUser | null) => {
+    if (!user) return { canView: false, canWrite: false }
+    const roles = new Set(getNamedValues(user.roles, ['name', 'slug', 'key']))
+    ;['role', 'roleName', 'role_name'].forEach(field => {
+        getNamedValues([user[field]], ['name', 'slug', 'key']).forEach(role =>
+            roles.add(role),
+        )
+    })
+    const canWrite =
+        roles.has('admin') ||
+        (roles.has('dentist') && !roles.has('receptionist'))
+    const permissions = extractUserPermissions(user).permissions as Set<string>
+    const canView =
+        canWrite ||
+        [
+            'clinical_notes.view',
+            'clinical_notes.*',
+            '*.view',
+            '*',
+        ].some(permission => permissions.has(permission))
+    return { canView, canWrite }
 }
 
 export const canAccessModule = (
