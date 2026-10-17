@@ -44,6 +44,11 @@ let socket, send, releaseWrite
 let failure = 0
 let holdWrites = false
 let dashboardFailure = false
+let actor = 'staff'
+let statusFailure = 0
+let externalStatus = null
+let reasonFailure = false
+let detailFailure = false
 const browserErrors = []
 const requests = []
 const today = new Date().toISOString().slice(0, 10)
@@ -118,7 +123,7 @@ const resource = row => ({
             .find(chair => chair.id === row.chair_id)?.name ?? null,
     appointmentStatus: row.status,
     paymentStatus: 'unpaid',
-    cancellation_reason: null,
+    cancellation_reason: row.cancellation_reason ?? null,
 })
 const writes = () =>
     requests.filter(request => ['POST', 'PATCH'].includes(request.method))
@@ -195,14 +200,20 @@ const run = async () => {
                         id: 90,
                         name: 'Staff tester',
                         email_verified_at: today,
-                        permissions: [
-                            'dashboard.view',
-                            'appointments.view',
-                            'appointments.create',
-                            'appointments.update',
-                            'patients.view',
-                            'treatments.view',
-                        ],
+                        ...(actor === 'admin' ? { roles: ['admin'] } : {}),
+                        permissions:
+                            actor === 'viewer'
+                                ? ['dashboard.view', 'appointments.view']
+                                : actor === 'admin'
+                                ? []
+                                : [
+                                      'dashboard.view',
+                                      'appointments.view',
+                                      'appointments.create',
+                                      'appointments.update',
+                                      'patients.view',
+                                      'treatments.view',
+                                  ],
                     }
                 else if (url.pathname === '/api/appointment-locations')
                     data = { rooms }
@@ -226,8 +237,12 @@ const run = async () => {
                         )
                         data = {
                             bookedToday: daily.length,
-                            waitingRoom: 0,
-                            treatmentsDone: 0,
+                            waitingRoom: daily.filter(
+                                row => row.status === 'checked_in',
+                            ).length,
+                            treatmentsDone: daily.filter(
+                                row => row.status === 'completed',
+                            ).length,
                             unpaidInvoiceAmount: 0,
                             collectionRate: 0,
                             todayAppointments: daily.map(resource),
@@ -248,6 +263,93 @@ const run = async () => {
                             .map(resource),
                     }
                 else if (
+                    (request.method === 'POST' &&
+                        /^\/api\/appointments\/\d+\/(check-in|complete|cancel)$/.test(
+                            url.pathname,
+                        )) ||
+                    (request.method === 'PATCH' &&
+                        /^\/api\/appointments\/\d+$/.test(url.pathname) &&
+                        payload?.status)
+                ) {
+                    if (holdWrites)
+                        await new Promise(resolve => {
+                            releaseWrite = resolve
+                        })
+                    const row = rows.find(
+                        row => row.id === Number(url.pathname.split('/')[3]),
+                    )
+                    const next =
+                        request.method === 'PATCH'
+                            ? payload.status
+                            : url.pathname.endsWith('/check-in')
+                            ? 'checked_in'
+                            : url.pathname.endsWith('/complete')
+                            ? 'completed'
+                            : 'cancelled'
+                    if (externalStatus) {
+                        row.status = externalStatus
+                        externalStatus = null
+                    }
+                    const allowed = {
+                        scheduled: ['checked_in', 'cancelled', 'no_show'],
+                        checked_in: ['in_progress', 'cancelled'],
+                        in_progress: ['completed', 'cancelled'],
+                        completed: [],
+                        cancelled: [],
+                        no_show: [],
+                    }
+                    if (statusFailure) {
+                        status = statusFailure
+                        message =
+                            status === 403
+                                ? 'You cannot change appointment status.'
+                                : status === 422
+                                ? 'The appointment status changed. Refresh and review the available actions.'
+                                : 'Unable to update appointment.'
+                        if (status === 422)
+                            errors = {
+                                status: [
+                                    'This transition is no longer allowed.',
+                                ],
+                            }
+                    } else if (reasonFailure && next === 'cancelled') {
+                        status = 422
+                        message = 'Please review the cancellation reason.'
+                        errors = {
+                            reason: ['Provide a valid cancellation reason.'],
+                        }
+                    } else if (
+                        next !== row.status &&
+                        !allowed[row.status].includes(next)
+                    ) {
+                        status = 422
+                        message = 'Invalid appointment transition.'
+                        errors = {
+                            status: ['This transition is no longer allowed.'],
+                        }
+                    } else {
+                        if (next !== row.status) {
+                            const timestamp = {
+                                checked_in: 'checked_in_at',
+                                completed: 'completed_at',
+                                cancelled: 'cancelled_at',
+                            }[next]
+                            if (timestamp)
+                                row[timestamp] = new Date().toISOString()
+                        }
+                        row.status = next
+                        if (
+                            next === 'cancelled' &&
+                            Object.prototype.hasOwnProperty.call(
+                                payload ?? {},
+                                'cancellation_reason',
+                            )
+                        )
+                            row.cancellation_reason =
+                                payload.cancellation_reason
+                        data = { appointment: resource(row) }
+                    }
+                } else if (
                     ['POST', 'PATCH'].includes(request.method) &&
                     /^\/api\/appointments(?:\/\d+)?$/.test(url.pathname)
                 ) {
@@ -298,17 +400,21 @@ const run = async () => {
                 } else if (
                     /^\/api\/appointments\/\d+$/.test(url.pathname) &&
                     request.method === 'GET'
-                )
-                    data = {
-                        appointment: resource(
-                            rows.find(
-                                row =>
-                                    row.id ===
-                                    Number(url.pathname.split('/').pop()),
+                ) {
+                    if (detailFailure) {
+                        status = 503
+                        message = 'Appointment details unavailable.'
+                    } else
+                        data = {
+                            appointment: resource(
+                                rows.find(
+                                    row =>
+                                        row.id ===
+                                        Number(url.pathname.split('/').pop()),
+                                ),
                             ),
-                        ),
-                    }
-                else {
+                        }
+                } else {
                     status = 404
                     message = 'Unexpected mocked request.'
                 }
@@ -594,9 +700,297 @@ const run = async () => {
     dashboardFailure = false
     await clickText('Retry dashboard')
     await waitFor(`document.body.innerText.includes('1 appointments today')`)
+
+    const actionLabels = [
+        'Check in',
+        'Start treatment',
+        'Complete',
+        'Cancel appointment',
+        'Mark no-show',
+    ]
+    const assertActions = async expected => {
+        const offered = await evaluate(
+            `Array.from(document.querySelectorAll('[role="dialog"] button')).map(button => button.textContent.trim()).filter(label => ${JSON.stringify(
+                actionLabels,
+            )}.includes(label)).sort()`,
+        )
+        assert.deepEqual(offered, [...expected].sort())
+    }
+    const hasStatus = status =>
+        `document.querySelector('[role="dialog"] dl')?.previousElementSibling.textContent.includes(${JSON.stringify(
+            status,
+        )})`
+    const openStatus = async (status, tab = 'dashboard') => {
+        const row = rows.find(row => row.id === 12)
+        row.status = status
+        row.cancellation_reason = null
+        delete row.checked_in_at
+        delete row.completed_at
+        delete row.cancelled_at
+        await send('Page.navigate', { url: `${origin}/?tab=${tab}` })
+        await waitFor(
+            `document.querySelector('[aria-label^="View appointment 12 "]') && !document.querySelector('[role="dialog"]')`,
+        )
+        await evaluate(
+            `document.querySelector('[aria-label^="View appointment 12 "]').click()`,
+        )
+        const labels = {
+            scheduled: 'Scheduled',
+            checked_in: 'Checked in',
+            in_progress: 'In progress',
+            completed: 'Completed',
+            cancelled: 'Cancelled',
+            no_show: 'No-show',
+        }
+        await waitFor(hasStatus(labels[status]))
+        return row
+    }
+    const pendingAction = async (label, status) => {
+        const before = writes().length
+        const reads = dashboardReads()
+        const onDashboard = await evaluate(
+            `new URL(location.href).searchParams.get('tab') === 'dashboard'`,
+        )
+        const button = `Array.from(document.querySelectorAll('[role="dialog"] button')).find(button => button.textContent.trim() === ${JSON.stringify(
+            label,
+        )} && !button.disabled)`
+        await waitFor(button)
+        holdWrites = true
+        await evaluate(
+            `(() => { const button = ${button}; button.click(); button.click(); })()`,
+        )
+        await waitForWrite(before + 1)
+        await delay(100)
+        assert.equal(
+            writes().length,
+            before + 1,
+            `${label}: duplicate action blocked`,
+        )
+        assert.ok(
+            await evaluate(
+                `Array.from(document.querySelectorAll('[role="dialog"] button')).every(button => button.disabled)`,
+            ),
+        )
+        assert.ok(
+            await evaluate(
+                `document.querySelector('[role="dialog"] [role="status"]')?.textContent.includes('Updating appointment')`,
+            ),
+        )
+        release()
+        await waitFor(
+            `${hasStatus(
+                status,
+            )} && !document.querySelector('[role="dialog"] [role="status"]')`,
+        )
+        if (onDashboard)
+            assert.ok(
+                dashboardReads() > reads,
+                `${label}: mounted dashboard refreshed`,
+            )
+        return writes()[before]
+    }
+    const assertRowStatus = async status => {
+        await waitFor(
+            `(() => { const button = document.querySelector('[aria-label^="View appointment 12 "]'); return (button?.closest('tr') ?? button?.closest('div.grid'))?.textContent.includes(${JSON.stringify(
+                status,
+            )}); })()`,
+        )
+    }
+
+    await openStatus('scheduled')
+    await assertActions(['Check in', 'Cancel appointment', 'Mark no-show'])
+    let action = await pendingAction('Check in', 'Checked in')
+    assert.equal(action.path, '/api/appointments/12/check-in')
+    await assertActions(['Start treatment', 'Cancel appointment'])
+    assert.ok(
+        await evaluate(
+            `document.body.innerText.includes('1 patients checked in')`,
+        ),
+    )
+    await close()
+    await navigate('calendar')
+    await assertRowStatus('Checked in')
+    await evaluate(
+        `document.querySelector('[aria-label^="View appointment 12 "]').click()`,
+    )
+    await pendingAction('Start treatment', 'In progress')
+    await assertActions(['Complete', 'Cancel appointment'])
+    await close()
+    await assertRowStatus('In progress')
+    await navigate('dashboard')
+    await assertRowStatus('In progress')
+    await evaluate(
+        `document.querySelector('[aria-label^="View appointment 12 "]').click()`,
+    )
+    action = await pendingAction('Complete', 'Completed')
+    assert.equal(action.path, '/api/appointments/12/complete')
+    await assertActions([])
+    assert.ok(
+        await evaluate(`document.body.innerText.includes('1 completed today')`),
+    )
+    await close()
+    await navigate('calendar')
+    await assertRowStatus('Completed')
+
+    await openStatus('scheduled', 'calendar')
+    await clickText('Cancel appointment')
+    await setInput(
+        '#appointment-cancellation_reason',
+        'Patient requested another day',
+    )
+    reasonFailure = true
+    await clickText('Confirm cancellation')
+    await waitFor(
+        `document.querySelector('#appointment-cancellation_reason')?.getAttribute('aria-invalid') === 'true' && !document.querySelector('[role="dialog"] [role="status"]')`,
+    )
+    assert.equal(
+        await evaluate(
+            `document.querySelector('#appointment-cancellation_reason').value`,
+        ),
+        'Patient requested another day',
+    )
+    assert.ok(
+        await evaluate(
+            `document.body.innerText.includes('Provide a valid cancellation reason.')`,
+        ),
+    )
+    reasonFailure = false
+    const beforeInvalidReason = writes().length
+    await setInput('#appointment-cancellation_reason', 'x'.repeat(2001))
+    await clickText('Confirm cancellation')
+    await waitFor(
+        `document.body.innerText.includes('Use at most 2000 characters.')`,
+    )
+    assert.equal(writes().length, beforeInvalidReason)
+    await setInput(
+        '#appointment-cancellation_reason',
+        'Patient requested another day',
+    )
+    action = await pendingAction('Confirm cancellation', 'Cancelled')
+    assert.equal(action.path, '/api/appointments/12/cancel')
+    assert.equal(
+        action.payload.cancellation_reason,
+        'Patient requested another day',
+    )
+    assert.ok(
+        await evaluate(
+            `document.querySelector('[role="dialog"]').textContent.includes('Patient requested another day')`,
+        ),
+    )
+    await assertActions([])
+    await close()
+    await assertRowStatus('Cancelled')
+    await navigate('dashboard')
+    await assertRowStatus('Cancelled')
+
+    for (const status of ['checked_in', 'in_progress']) {
+        await openStatus(status)
+        await clickText('Cancel appointment')
+        action = await pendingAction('Confirm cancellation', 'Cancelled')
+        assert.equal(action.payload.cancellation_reason, null)
+        await assertActions([])
+        await close()
+    }
+    await openStatus('scheduled', 'calendar')
+    await clickText('Mark no-show')
+    action = await pendingAction('Confirm no-show', 'No-show')
+    assert.equal(action.method, 'PATCH')
+    assert.deepEqual(action.payload, { status: 'no_show' })
+    await assertActions([])
+    await close()
+    await assertRowStatus('No-show')
+    await navigate('dashboard')
+    await assertRowStatus('No-show')
+
+    // A competing operator completes the appointment while cancellation is open.
+    await openStatus('scheduled')
+    await clickText('Cancel appointment')
+    externalStatus = 'completed'
+    statusFailure = 422
+    await clickText('Confirm cancellation')
+    await waitFor(
+        `${hasStatus(
+            'Completed',
+        )} && document.body.innerText.includes('This transition is no longer allowed.') && !document.querySelector('[role="dialog"] [role="status"]')`,
+    )
+    await assertActions([])
+    assert.equal(
+        await evaluate(
+            `document.querySelector('#appointment-cancellation_reason') !== null`,
+        ),
+        false,
+    )
+    statusFailure = 0
+    await close()
+    await assertRowStatus('Completed')
+
+    // If that fresh read fails, keep the error and lock actions until retry succeeds.
+    await openStatus('scheduled')
+    externalStatus = 'checked_in'
+    statusFailure = 422
+    detailFailure = true
+    await clickText('Check in')
+    await waitFor(
+        `document.body.innerText.includes('Refresh the appointment before trying another action.') && !document.querySelector('[role="dialog"] [role="status"]')`,
+    )
+    assert.ok(
+        await evaluate(
+            `Array.from(document.querySelectorAll('[role="dialog"] button')).filter(button => ${JSON.stringify(
+                actionLabels,
+            )}.includes(button.textContent.trim())).every(button => button.disabled)`,
+        ),
+    )
+    detailFailure = false
+    statusFailure = 0
+    await clickText('Refresh appointment')
+    await waitFor(
+        `${hasStatus(
+            'Checked in',
+        )} && !document.querySelector('[role="dialog"] [role="status"]')`,
+    )
+    await assertActions(['Start treatment', 'Cancel appointment'])
+    await close()
+
+    await openStatus('scheduled')
+    statusFailure = 500
+    await clickText('Check in')
+    await waitFor(
+        `document.body.innerText.includes('Unable to update appointment.') && !document.querySelector('[role="dialog"] [role="status"]')`,
+    )
+    await assertActions(['Check in', 'Cancel appointment', 'Mark no-show'])
+    statusFailure = 0
+    await pendingAction('Check in', 'Checked in')
+    await close()
+
+    actor = 'viewer'
+    await openStatus('scheduled')
+    await waitFor(
+        `document.body.innerText.includes('Read-only appointment access.')`,
+    )
+    await assertActions([])
+    assert.equal(
+        await evaluate(
+            `Array.from(document.querySelectorAll('[role="dialog"] button')).some(button => button.textContent.trim() === 'Edit appointment')`,
+        ),
+        false,
+    )
+    await close()
+    actor = 'admin'
+    await openStatus('scheduled')
+    await pendingAction('Check in', 'Checked in')
+    await close()
+    actor = 'staff'
+    await openStatus('scheduled')
+    statusFailure = 403
+    await clickText('Check in')
+    await waitFor(
+        `document.body.innerText.includes('You cannot change appointment status.') && !document.querySelector('[role="dialog"] [role="status"]')`,
+    )
+    await assertActions([])
+    statusFailure = 0
     assert.deepEqual(browserErrors, [])
     console.log(
-        'Appointment browser checks passed: canonical selectors, validation, 422/500 errors, duplicate create/edit prevention, pending save controls, and dashboard/schedule refresh after both mutations.',
+        'Appointment browser checks passed: create/edit, all status actions, cancellation reasons, pending/duplicate protection, dashboard/schedule refresh, stale transition recovery, and admin/staff/read-only/403 scenarios.',
     )
 }
 

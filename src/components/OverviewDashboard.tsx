@@ -188,12 +188,19 @@ const OverviewDashboard = () => {
                                             {appointment.treatment}
                                         </p>
                                     </div>
-                                    <span
-                                        className={`w-fit rounded px-2 py-1 text-xs font-bold ${getDashboardToneClass(
-                                            appointment.statusTone,
-                                        )}`}>
-                                        {appointment.status}
-                                    </span>
+                                    <div>
+                                        <span
+                                            className={`w-fit rounded px-2 py-1 text-xs font-bold ${getDashboardToneClass(
+                                                appointment.statusTone,
+                                            )}`}>
+                                            {appointment.status}
+                                        </span>
+                                        {appointment.paymentDue && (
+                                            <p className="mt-2 text-xs font-bold text-rose-700">
+                                                Payment due
+                                            </p>
+                                        )}
+                                    </div>
                                     <button
                                         type="button"
                                         disabled={!access.canView}

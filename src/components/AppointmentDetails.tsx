@@ -1,5 +1,8 @@
 import React, { useRef, useState } from 'react'
-import { useAppointment } from '../hooks/appointments'
+import {
+    useAppointment,
+    useAppointmentMutationSync,
+} from '../hooks/appointments'
 import { ApiFieldErrors, normalizeAxiosError } from '../lib/api'
 import {
     appointmentStatusClasses,
@@ -14,6 +17,7 @@ import {
     cancelAppointment,
     checkInAppointment,
     completeAppointment,
+    getAppointment,
     updateAppointment,
 } from '../services/appointments'
 import AppointmentDialog, {
@@ -50,20 +54,45 @@ const AppointmentDetails = ({
         canView,
         canUpdate,
     } = useAppointment(id)
+    const syncAppointment = useAppointmentMutationSync()
     const [pending, setPending] = useState<AppointmentStatus | null>(null)
     const [confirming, setConfirming] = useState<AppointmentStatus | null>(null)
     const [reason, setReason] = useState('')
     const [actionError, setActionError] = useState('')
     const [fieldErrors, setFieldErrors] = useState<ApiFieldErrors>({})
     const [forbidden, setForbidden] = useState(false)
+    const [refreshing, setRefreshing] = useState(false)
+    const [needsRefresh, setNeedsRefresh] = useState(false)
     const mutationRef = useRef(false)
+    const validActions = appointmentTransitions[appointment?.status] ?? []
+    const busy = pending !== null || refreshing
+    const confirmationAllowed = confirming && validActions.includes(confirming)
+
+    const refreshSnapshot = async () => {
+        if (!canView || !appointment) return
+        setRefreshing(true)
+        try {
+            const latest = await getAppointment(id)
+            await syncAppointment(latest, appointment)
+            setNeedsRefresh(false)
+        } catch {
+            // Preserve the original action error and block writes to a stale snapshot.
+            setNeedsRefresh(true)
+        } finally {
+            setRefreshing(false)
+        }
+    }
     const applyStatus = async (next: AppointmentStatus) => {
         if (
             mutationRef.current ||
             !appointment ||
+            !canView ||
             !canUpdate ||
             forbidden ||
-            !appointmentTransitions[appointment.status]?.includes(next)
+            refreshing ||
+            needsRefresh ||
+            isValidating ||
+            !validActions.includes(next)
         )
             return
         if (next === 'cancelled' && reason.length > 2000) {
@@ -94,6 +123,10 @@ const AppointmentDetails = ({
             setActionError(apiError.message)
             setFieldErrors(normalizeAppointmentFieldErrors(apiError.errors))
             setForbidden(apiError.statusCode === 403)
+            if (apiError.statusCode === 404) setNeedsRefresh(true)
+            if (apiError.statusCode === 422 || apiError.statusCode === 409) {
+                await refreshSnapshot()
+            }
         } finally {
             mutationRef.current = false
             setPending(null)
@@ -114,8 +147,17 @@ const AppointmentDetails = ({
         <AppointmentDialog
             title="Appointment details"
             onClose={onClose}
-            busy={pending !== null}>
-            <div className="space-y-5 px-6 py-5">
+            busy={busy}>
+            <div className="space-y-5 px-6 py-5" aria-busy={busy}>
+                {busy && (
+                    <p
+                        role="status"
+                        className="text-sm font-bold text-clinic-blue">
+                        {refreshing
+                            ? 'Refreshing appointment...'
+                            : 'Updating appointment...'}
+                    </p>
+                )}
                 {!canView ? (
                     <p role="alert">
                         You do not have permission to view appointments.
@@ -216,6 +258,21 @@ const AppointmentDetails = ({
                                         />
                                     ),
                                 )}
+                                {needsRefresh && (
+                                    <p className="mt-2">
+                                        Refresh the appointment before trying
+                                        another action.
+                                    </p>
+                                )}
+                                {!forbidden && (
+                                    <button
+                                        type="button"
+                                        disabled={busy || isValidating}
+                                        onClick={() => void refreshSnapshot()}
+                                        className={`${appointmentButtonClass} mt-3`}>
+                                        Refresh appointment
+                                    </button>
+                                )}
                             </div>
                         )}
                         {canUpdate && !forbidden ? (
@@ -224,20 +281,20 @@ const AppointmentDetails = ({
                                     <button
                                         type="button"
                                         disabled={
-                                            pending !== null || isValidating
+                                            busy || isValidating || needsRefresh
                                         }
                                         onClick={() => onEdit(appointment)}
                                         className={appointmentButtonClass}>
                                         Edit appointment
                                     </button>
-                                    {appointmentTransitions[
-                                        appointment.status
-                                    ]?.map(next => (
+                                    {validActions.map(next => (
                                         <button
                                             key={next}
                                             type="button"
                                             disabled={
-                                                pending !== null || isValidating
+                                                busy ||
+                                                isValidating ||
+                                                needsRefresh
                                             }
                                             className={
                                                 next === 'cancelled' ||
@@ -261,7 +318,7 @@ const AppointmentDetails = ({
                                         </button>
                                     ))}
                                 </div>
-                                {confirming && (
+                                {confirmationAllowed && (
                                     <div className="space-y-3 rounded-md border border-clinic-line bg-clinic-canvas p-4">
                                         <p className="text-sm font-bold text-clinic-ink">
                                             {confirming === 'cancelled'
@@ -279,22 +336,46 @@ const AppointmentDetails = ({
                                                     maxLength={2000}
                                                     rows={3}
                                                     value={reason}
-                                                    disabled={pending !== null}
-                                                    onChange={event =>
+                                                    disabled={busy}
+                                                    aria-invalid={Boolean(
+                                                        fieldErrors
+                                                            .cancellation_reason
+                                                            ?.length,
+                                                    )}
+                                                    aria-describedby="appointment-cancellation-reason-errors appointment-cancellation-reason-hint"
+                                                    onChange={event => {
                                                         setReason(
                                                             event.target.value,
                                                         )
-                                                    }
+                                                        setFieldErrors(
+                                                            previous => ({
+                                                                ...previous,
+                                                                cancellation_reason: [],
+                                                            }),
+                                                        )
+                                                    }}
                                                     className={
                                                         appointmentInputClass
                                                     }
                                                 />
+                                                <span
+                                                    id="appointment-cancellation-reason-hint"
+                                                    className="mt-1 block text-xs">
+                                                    Up to 2000 characters.
+                                                </span>
+                                                <span
+                                                    id="appointment-cancellation-reason-errors"
+                                                    className="mt-2 block text-sm text-red-600">
+                                                    {fieldErrors.cancellation_reason?.join(
+                                                        ' ',
+                                                    )}
+                                                </span>
                                             </label>
                                         )}
                                         <div className="flex gap-3">
                                             <button
                                                 type="button"
-                                                disabled={pending !== null}
+                                                disabled={busy}
                                                 onClick={() =>
                                                     setConfirming(null)
                                                 }
@@ -305,7 +386,11 @@ const AppointmentDetails = ({
                                             </button>
                                             <button
                                                 type="button"
-                                                disabled={pending !== null}
+                                                disabled={
+                                                    busy ||
+                                                    isValidating ||
+                                                    needsRefresh
+                                                }
                                                 onClick={() =>
                                                     void applyStatus(confirming)
                                                 }

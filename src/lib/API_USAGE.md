@@ -127,10 +127,26 @@ retains history. Closed appointments expose descriptive edits and lock
 scheduling fields. The UI deliberately uses cancellation rather than physical
 deletion.
 
+Status actions require `appointments.update` (or the admin role). The UI only
+offers check-in/no-show for scheduled appointments, start treatment for
+checked-in appointments, completion for in-progress appointments, and
+cancellation for any active status. Terminal appointments offer no status
+actions. Cancellation/no-show require an inline confirmation; cancellation
+reasons are limited to 2000 characters and sent as `cancellation_reason`.
+
+Pending actions lock all action/edit/close controls and announce progress.
+Field and status errors remain visible without discarding the cancellation
+reason. After a rejected transition (422/409), details fetch the current
+appointment and synchronize schedule/dashboard caches without a success
+notice. Invalid confirmations disappear when the new status disallows them.
+If that fresh read fails, actions remain locked until Refresh appointment
+succeeds. A backend 403 removes mutation controls. Dashboard badges retain the
+workflow status; payment reminders appear separately from completion status.
+
 Run `npm run test:appointments` for API requests, UTC and overnight ranges,
 partial update payloads, location consistency, workflow rules, permissions,
-cross-date cache updates, dashboard refresh/permissions, and schedule
-loading/error/empty rendering.
+cross-date cache updates, dashboard refresh/permissions, all 30 combinations
+of roles and statuses, and schedule loading/error/empty rendering.
 
 For browser regression checks, start the app and run
 `npm run test:appointments:browser` (Node 22+ and Chrome, Edge, or Chromium).
@@ -139,4 +155,7 @@ to match its configured backend URL, and `BROWSER_PATH` for another browser
 executable. Backend requests are intercepted and mocked: the check never
 creates or edits live appointments. It verifies canonical numeric selections,
 required-field validation, backend conflict/server errors, double submission
-while requests are pending, and dashboard/schedule refresh after create/edit.
+while requests are pending, and dashboard/schedule refresh after create/edit
+and status actions. Status checks cover cancellation from every active status,
+reason validation/retention, invalid-transition recovery (including a failed
+fresh read), server errors/retry, and admin/staff/read-only/403 behavior.

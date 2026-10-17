@@ -263,6 +263,16 @@ const main = async () => {
     assert.equal(dashboardSummary.metrics[0].value, '01')
     assert.equal(dashboardSummary.todayAppointments[0].id, fixture.id)
     assert.deepEqual(requests.pop(), ['get', '/api/dashboard/summary'])
+    response = {
+        ...response,
+        todayAppointments: [
+            { ...fixture, status: 'completed', paymentStatus: 'unpaid' },
+        ],
+    }
+    const completedSummary = await dashboardService.getDashboardSummary()
+    assert.equal(completedSummary.todayAppointments[0].status, 'Completed')
+    assert.equal(completedSummary.todayAppointments[0].paymentDue, true)
+    assert.equal(completedSummary.todayAppointments[0].statusTone, 'mint')
     for (const field of [
         'patient_id',
         'dentist_id',
@@ -292,6 +302,14 @@ const main = async () => {
             service.updateAppointment(11, payload),
             error => error === failure,
         )
+        for (const call of [
+            () => service.checkInAppointment(11),
+            () => service.completeAppointment(11),
+            () => service.cancelAppointment(11, 'Patient request'),
+            () => service.updateAppointment(11, { status: 'no_show' }),
+        ]) {
+            await assert.rejects(call(), error => error === failure)
+        }
     }
     failure = undefined
     assert.deepEqual(
@@ -593,8 +611,108 @@ const main = async () => {
     assert.ok(html.includes('Retry dashboard'))
     assert.ok(!html.includes('Jane Doe'))
 
+    let detailState
+    const Details = compileModule('components/AppointmentDetails.tsx', {
+        '../hooks/appointments': {
+            useAppointment: () => detailState,
+            useAppointmentMutationSync: () => async () => {},
+        },
+        '../lib/api': { normalizeAxiosError: error => error },
+        '../lib/appointment-workflow': workflow,
+        '../services/appointments': service,
+        './AppointmentDialog': {
+            __esModule: true,
+            default: ({ children }) =>
+                React.createElement('section', null, children),
+        },
+        './InputError': {
+            __esModule: true,
+            default: ({ messages = [] }) =>
+                React.createElement('p', null, messages.join(' ')),
+        },
+    }).default
+    const labels = {
+        checked_in: 'Check in',
+        in_progress: 'Start treatment',
+        completed: 'Complete',
+        cancelled: 'Cancel appointment',
+        no_show: 'Mark no-show',
+    }
+    const roles = [
+        { name: 'admin', user: { roles: ['admin'] }, canManage: true },
+        {
+            name: 'authorized staff',
+            user: { permissions: ['appointments.view', 'appointments.update'] },
+            canManage: true,
+        },
+        {
+            name: 'read-only staff',
+            user: { permissions: ['appointments.view'] },
+            canManage: false,
+        },
+        {
+            name: 'create-only staff',
+            user: { permissions: ['appointments.view', 'appointments.create'] },
+            canManage: false,
+        },
+        { name: 'unauthorized', user: { permissions: [] }, canManage: false },
+    ]
+    for (const role of roles) {
+        const permissionSet = permissions.getUserPermissionSet(role.user)
+        for (const status of Object.keys(workflow.appointmentTransitions)) {
+            detailState = {
+                data: { ...appointment, status, appointmentStatus: status },
+                canView: permissionSet.has('appointments.view'),
+                canUpdate: permissionSet.has('appointments.update'),
+                isValidating: false,
+            }
+            html = renderToStaticMarkup(
+                React.createElement(Details, {
+                    id: appointment.id,
+                    onClose: () => {},
+                    onEdit: () => {},
+                    onUpdated: async () => {},
+                }),
+            )
+            for (const [next, label] of Object.entries(labels)) {
+                const offered = html.includes(`>${label}</button>`)
+                assert.equal(
+                    offered,
+                    role.canManage &&
+                        workflow.appointmentTransitions[status].includes(next),
+                    `${role.name}: ${status} -> ${next}`,
+                )
+            }
+            if (!detailState.canView) assert.ok(!html.includes('Jane Doe'))
+        }
+    }
+    for (const status of ['checked_in', 'completed', 'cancelled', 'no_show']) {
+        mutations.length = 0
+        const changed = { ...appointment, status, appointmentStatus: status }
+        await hook.useAppointmentMutationSync()(changed, appointment)
+        assert.equal(
+            cache.get(
+                JSON.stringify(['appointments', session.user, '2026-10-16']),
+            )[0].status,
+            status,
+        )
+        assert.equal(
+            cache.get(
+                JSON.stringify(['appointment', session.user, appointment.id]),
+            ).status,
+            status,
+        )
+        assert.ok(
+            mutations.some(
+                mutation =>
+                    mutation.key[0] === 'dashboard-summary' &&
+                    mutation.revalidate === true,
+            ),
+        )
+    }
+
     console.log(
-        'Appointment API, UTC, workflow, location, permissions, cache, and schedule tests passed.',
+        'Appointment API, UTC, workflow, location, role/status matrix, cache, and dashboard/schedule tests passed.',
     )
 }
 main().catch(error => {
