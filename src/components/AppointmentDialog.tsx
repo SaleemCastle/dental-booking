@@ -15,12 +15,14 @@ const AppointmentDialog = ({
     onClose,
     busy = false,
     initialFocus,
+    closeLabel = 'Close appointment',
 }: {
     title: string
     children: ReactNode
     onClose: () => void
     busy?: boolean
     initialFocus?: RefObject<HTMLElement>
+    closeLabel?: string
 }) => (
     <Dialog
         open={true}
@@ -39,7 +41,7 @@ const AppointmentDialog = ({
                     type="button"
                     disabled={busy}
                     onClick={onClose}
-                    aria-label="Close appointment"
+                    aria-label={closeLabel}
                     className={appointmentButtonClass}>
                     <FiX />
                 </button>

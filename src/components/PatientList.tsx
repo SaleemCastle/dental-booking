@@ -7,6 +7,7 @@ import { PaginationMeta } from '../lib/api'
 import { formatDate } from '../utils'
 import { FiX } from 'react-icons/fi'
 import { PatientPayload } from '../services/patients'
+import PatientClinicalNotes from './PatientClinicalNotes'
 
 interface PatientListProps {
     meta?: PaginationMeta
@@ -296,7 +297,7 @@ const PatientList = ({
         <section
             className={`grid gap-5 px-8 py-5 ${
                 selectedPatient
-                    ? 'xl:grid-cols-[minmax(0,1fr)_360px]'
+                    ? 'xl:grid-cols-[minmax(0,1fr)_440px]'
                     : 'grid-cols-1'
             }`}>
             <div className="min-w-0">
@@ -627,15 +628,12 @@ const PatientList = ({
                             </div>
                         )}
 
-                        <div className="rounded-md border border-dashed border-clinic-line p-4">
-                            <p className="text-xs font-bold uppercase text-clinic-muted">
-                                Timeline
-                            </p>
-                            <p className="mt-2 text-sm text-clinic-muted">
-                                Visits, notes, and archive events will appear
-                                here as the clinical modules come online.
-                            </p>
-                        </div>
+                        {!isDetailLoading && !detailErrorMessage && (
+                            <PatientClinicalNotes
+                                key={selectedPatient.id}
+                                patient={selectedPatient}
+                            />
+                        )}
                     </div>
                 </aside>
             ) : null}

@@ -178,3 +178,40 @@ Dashboard checks also exercise the legacy route, UTC display in a Bogota
 browser, nonzero backend metrics/workload, loading/error/empty states, and
 polling/focus/reconnect/manual refresh after changes made outside the UI. These
 browser checks use a mocked API; they do not establish live database behavior.
+
+## Clinical Notes
+
+Open a patient from Patient List to see the clinical note timeline. Admins and
+dentists without a receptionist role can create, edit, and delete notes from
+any author. Other users require `clinical_notes.view` or its read wildcard
+equivalent and receive a read-only timeline. A receptionist role prevents writes
+even alongside dentist or wildcard permissions; admin is the explicit override.
+The backend remains the authority for every request, including expired access.
+
+The form selects a provider record independently of the authenticated user.
+An optional appointment selector includes all statuses for the current patient;
+selecting a visit selects its provider. Detach the visit before changing the
+provider independently. Appointment browsing requires `appointments.view`.
+Archived patients support clinical notes. Existing links remain intact when
+editing text, and choosing no appointment explicitly sends `appointment_id: null`.
+The client sends only changed relationship IDs and text on edit; authorship,
+last editor, and timestamps are server-controlled.
+
+`src/services/clinical-notes.ts` uses the standard envelope and
+`meta.pagination`. Notes load newest first with Load older notes. The timeline
+shows persisted creation and last-edit attribution, including unknown legacy
+authors; it does not infer a full revision history. Note caches are scoped to
+the session and patient. Successful writes immediately update the timeline and
+refresh loaded pages. Focus/reconnect and Refresh notes pick up other staff's
+changes. A failed refresh preserves a successful write and offers retry. Backend
+403 responses hide unavailable note content and disable rejected write controls.
+
+Run `npm run test:clinical-notes` for API, validation, partial-update, attribution,
+permission, and rendering checks. With the app running, run
+`npm run test:clinical-notes:browser` using Node 22+ and Chrome, Edge, or Chromium.
+Set `CLINICAL_NOTES_TEST_URL`, `CLINICAL_NOTES_TEST_API_URL`, or `BROWSER_PATH` to
+override the frontend URL, its configured backend origin, or browser executable.
+All backend requests are mocked. Browser checks cover create/edit/link/detach/
+delete, duplicate submissions, relationship errors, failed refreshes, collaborative
+attribution, pagination, archived patients, provider/appointment loading failures,
+and role restrictions. They do not mutate live records or verify database behavior.

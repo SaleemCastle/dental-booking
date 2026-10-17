@@ -25,6 +25,7 @@ const PatientRowDetails = ({
     return (
         <button
             type="button"
+            aria-label={`View patient ${firstName} ${lastName}`}
             className={`py-3 w-full rounded-md border flex flex-row items-center pl-4 gap-2 mb-3 text-left hover:shadow-row transition-all ${
                 isSelected
                     ? 'border-clinic-blue bg-clinic-sky'
