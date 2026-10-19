@@ -32,6 +32,7 @@ export type AppModule =
     | 'messages'
     | 'payment_information'
     | 'settings'
+    | 'audit_logs'
 
 interface UserRole {
     name?: string
@@ -143,6 +144,13 @@ export const navigationModules: NavigationModule[] = [
         label: Tabs.Settings,
         href: { pathname: '/', query: { tab: 'settings' } },
         permissions: ['settings.view'],
+    },
+    {
+        id: 'audit_logs',
+        label: Tabs.AuditLogs,
+        href: { pathname: '/', query: { tab: 'audit_logs' } },
+        // Audit access uses role slugs, independently of permission grants.
+        permissions: [],
     },
 ]
 
@@ -387,10 +395,28 @@ export const getClinicalNotePermissions = (user: AuthUser | null) => {
     return { canView, canWrite }
 }
 
+// Only the role slugs returned by /api/user grant audit access. Display names,
+// legacy role aliases, permission wildcards, and super-admin flags do not.
+export const canViewAuditLogs = (user: AuthUser | null) => {
+    return Boolean(
+        user &&
+            Array.isArray(user.roles) &&
+            user.roles.some(
+                role =>
+                    role &&
+                    typeof role === 'object' &&
+                    ['admin', 'auditor'].includes(
+                        (role as { slug?: string }).slug,
+                    ),
+            ),
+    )
+}
+
 export const canAccessModule = (
     user: AuthUser | null,
     module: NavigationModule,
 ) => {
+    if (module.id === 'audit_logs') return canViewAuditLogs(user)
     const permissions = getUserPermissionSet(user)
 
     return module.permissions.every(permission => permissions.has(permission))

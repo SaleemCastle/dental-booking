@@ -39,6 +39,7 @@ exports.openBrowser = async ({ origin, apiOrigin, onRequest }) => {
     )
     let socket, send
     const errors = []
+    const cancelledRequests = new Set()
     const cleanup = async () => {
         if (socket?.readyState === WebSocket.OPEN) {
             try {
@@ -112,8 +113,13 @@ exports.openBrowser = async ({ origin, apiOrigin, onRequest }) => {
                     item.params.exceptionDetails.exception?.description ??
                         item.params.exceptionDetails.text,
                 )
+            else if (
+                item.method === 'Network.loadingFailed' &&
+                item.params.canceled
+            )
+                cancelledRequests.add(item.params.requestId)
             else if (item.method === 'Fetch.requestPaused') {
-                const { requestId, request } = item.params
+                const { requestId, request, networkId } = item.params
                 try {
                     const result =
                         request.method === 'OPTIONS'
@@ -131,6 +137,7 @@ exports.openBrowser = async ({ origin, apiOrigin, onRequest }) => {
                         meta,
                         errors: fields = {},
                         message = 'OK',
+                        requestId: responseRequestId,
                     } = result
                     await send('Fetch.fulfillRequest', {
                         requestId,
@@ -172,10 +179,18 @@ exports.openBrowser = async ({ origin, apiOrigin, onRequest }) => {
                                           data,
                                           errors: fields,
                                           meta,
+                                          requestId: responseRequestId,
                                       }),
                                   ).toString('base64'),
                     })
                 } catch (error) {
+                    // A delayed fixture can finish after the application aborts
+                    // its XHR. Chrome has already discarded that interception.
+                    if (
+                        cancelledRequests.has(networkId) &&
+                        /Invalid InterceptionId/.test(error.message)
+                    )
+                        return
                     errors.push(error.stack)
                     await send('Fetch.failRequest', {
                         requestId,
@@ -186,6 +201,7 @@ exports.openBrowser = async ({ origin, apiOrigin, onRequest }) => {
         }
         await send('Runtime.enable')
         await send('Page.enable')
+        await send('Network.enable')
         await send('Fetch.enable', {
             patterns: [{ urlPattern: `${apiOrigin}/*` }],
         })
@@ -251,6 +267,7 @@ exports.openBrowser = async ({ origin, apiOrigin, onRequest }) => {
             select,
             delay,
             errors,
+            cancelledRequests,
             close: cleanup,
         }
     } catch (error) {

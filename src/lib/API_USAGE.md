@@ -302,3 +302,82 @@ context, staff assignment, completion history, patient isolation, pagination,
 validation, duplicate protection, refresh failures, and permission changes. Set
 `FOLLOW_UPS_TEST_URL`, `FOLLOW_UPS_TEST_API_URL`, or `BROWSER_PATH` as needed. Backend
 requests are mocked; these checks do not verify a deployed backend/database.
+
+## Audit Viewer (M7)
+
+Open Audit Logs at `/?tab=audit_logs`. The existing authenticated client sends
+credentials and Accept headers. Audit GETs do not need an extra CSRF request.
+Navigation, the viewer hook, and all audit service methods require a role object
+in `/api/user` with `roles[].slug` exactly `admin` or `auditor`. Display names,
+string roles, legacy aliases, permission wildcards, `audit_logs.view`, and
+super-admin flags alone do not grant access. The API checks current membership
+on every request; frontend guards supplement that server policy.
+
+The implementation follows the supplied guide and the local backend's
+`AuditLogController`, `AuditLogResource`, `ListAuditLogsRequest`, and
+`AuditLogPolicy`. The earlier proposed contract has been replaced:
+
+| Read | Response |
+| --- | --- |
+| `GET /api/audit-logs` | `data.auditLogs`, `meta.pagination` |
+| `GET /api/audit-logs/filters` | `data.actions`, `data.resourceTypes` |
+| `GET /api/audit-logs/{id}` | `data.auditLog` |
+
+Rows use `actorName`, `actor_id`, `action`, `resource_type`, string `resource_id`,
+`occurred_at`, nullable `ip_address`/`user_agent`, and nullable allowlisted
+`request_metadata` (`request_id`, `method`, `route`). Null attribution displays
+System / unauthenticated; a non-null actor ID with no current name displays
+Deleted user #ID. Actor names are current names, not historical snapshots.
+IP/user agent and the exact six-digit timestamp are shown in the detail dialog.
+All values are escaped text. No resource links imply underlying API access.
+
+Filters combine on the server before pagination: `actor_id`, `actor_is_null`,
+`action`, `resource_type`, string `resource_id`, `request_id`, `from`, and `to`.
+Empty filters are omitted. Attribution uses `1`/`0`, and choosing unattributed
+records clears/disables user ID. Resource and action suggestions load once on
+opening the viewer, independently of active filters; exact tokens remain usable
+when suggestions fail or are empty. Actor history works for deleted accounts
+without a user-directory query. Related activity uses the row's originating
+mutation request ID, never the top-level GET request ID.
+
+Valid text/ID filters debounce for 500 ms; Apply submits immediately. Invalid
+filters stay local, and changing applied filters resets page 1. Query values are
+encoded with URLSearchParams, preserving positive offsets and resource keys such
+as `00042`. From/through fields accept inclusive RFC 3339 timestamps with seconds,
+explicit Z/offset, and optional 1-6 fractional digits. Local validation compares
+offsets and microseconds without Date's fractional truncation. A full offset day
+ends at `23:59:59.999999` with that offset. Display timezone can change independently
+of filter bounds; it never silently converts input. Raw timestamps remain available
+in list time-element titles and detail text.
+
+Results follow backend occurrence-time/ID descending order, 25 per page. Explicit
+refresh returns to page 1. Pagination retains bounds, including an explicit `to`;
+a note explains that new records may shift offset-based pages. Filtering never
+loads the full history. Detail reads use the audit ID, not the resource ID.
+
+Audit reads use component-local state, outside the shared SWR cache. Each request
+has an AbortController bridged to Axios 0.21 CancelToken through the existing API
+client. Obsolete/cancelled replies cannot replace new results or errors. User/key
+checks suppress previous data immediately, and pending work is cancelled on
+filter changes, detail close, account/access changes, logout, and unmount. Payloads
+are not persisted to browser storage, service workers, analytics, or error reports.
+Server responses provide Cache-Control: private, no-store.
+
+401 clears protected state through the normal session/login flow. 403 clears all
+audit results/detail/options and refreshes session membership. A missing detail
+is marked unavailable with retry/close. 422 messages appear under corresponding
+filters; read failures show their top-level GET request ID. Network/5xx errors
+allow retry. 429 disables new reads/retries for 30 seconds with no automatic retry
+or polling. Loading and empty states are independent for list/options/detail.
+
+The frontend exposes only GET audit services. It has no mutation, bulk, export,
+audit-event submission, or migration behavior. Filter/history/detail buttons only
+read data. The backend rejects unsupported write methods with 405.
+
+Run `npm run test:audit-logs` for role, service, cancellation, precision, rendering,
+and error checks. With the app running, `npm run test:audit-logs:browser` verifies
+the documented contract using mocked HTTP, including delayed list/detail replies,
+account changes, logout, revocation, options, 422 and rate limiting. Override
+`AUDIT_LOGS_TEST_URL`, `AUDIT_LOGS_TEST_API_URL`, or `BROWSER_PATH` as needed. Mocked
+checks do not exercise a deployed database or replace the backend's
+`tests/Feature/Api/AuditLogApiTest.php` authorization/immutability coverage.
