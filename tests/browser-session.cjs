@@ -131,6 +131,7 @@ exports.openBrowser = async ({ origin, apiOrigin, onRequest }) => {
                         meta,
                         errors: fields = {},
                         message = 'OK',
+                        requestId: responseRequestId,
                     } = result
                     await send('Fetch.fulfillRequest', {
                         requestId,
@@ -172,6 +173,7 @@ exports.openBrowser = async ({ origin, apiOrigin, onRequest }) => {
                                           data,
                                           errors: fields,
                                           meta,
+                                          requestId: responseRequestId,
                                       }),
                                   ).toString('base64'),
                     })

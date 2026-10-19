@@ -302,3 +302,63 @@ context, staff assignment, completion history, patient isolation, pagination,
 validation, duplicate protection, refresh failures, and permission changes. Set
 `FOLLOW_UPS_TEST_URL`, `FOLLOW_UPS_TEST_API_URL`, or `BROWSER_PATH` as needed. Backend
 requests are mocked; these checks do not verify a deployed backend/database.
+
+## Admin Audit Viewer (M7)
+
+Open Audit Logs from the admin sidebar (`/?tab=audit_logs`). Access requires an
+explicit `admin` role. Navigation, direct-tab rendering, the query hook, and the
+read service apply that role check. General permission wildcards, audit permission
+strings, legacy users, and super-admin flags without the actual role do not grant
+access. A query 403 hides cached results and refreshes the session so revoked
+admins lose their navigation and viewer. Audit data caches include the session,
+applied filters, and page. The viewer exposes no audit write operations.
+
+**Backend dependency is not yet implemented in the local backend.** Its
+`docs/audit-logging.md` explicitly exposes audit storage only, without a read API.
+The frontend uses the following proposed read contract; it must be confirmed or
+implemented before live integration and server authorization can be signed off.
+Frontend role checks do not secure a backend endpoint against direct HTTP calls.
+
+`GET /api/audit-logs` must require Sanctum authentication and the actual admin role
+on every request (401 for guests; 403 for non-admins, including wildcard holders).
+No POST/PATCH/PUT/DELETE audit endpoints should be exposed. Filters combine before
+pagination and use the existing audit model's identifiers:
+
+| Query | Meaning |
+| --- | --- |
+| `actor_id` | Optional positive user ID; includes historical/deleted accounts. |
+| `resource_type` | Optional exact plural snake-case type, e.g. `clinical_notes`. |
+| `resource_id` | Optional exact canonical resource key, including UUIDs/machine keys. |
+| `date_from` | Optional inclusive UTC `YYYY-MM-DD` start date. |
+| `date_to` | Optional inclusive UTC `YYYY-MM-DD` end date (before next midnight). |
+| `page`, `per_page` | Page >= 1; viewer requests 25 records per page. |
+
+Return the standard envelope with `data.audit_logs`, ordered by `occurred_at DESC,
+id DESC`, and `meta.pagination` (`currentPage`, `perPage`, `total`, `lastPage`).
+Each read-only record contains `id`, nullable `actor_id`, `action`, `resource_type`,
+string `resource_id`, ISO UTC `occurred_at`, and nullable `request_metadata`
+containing only `request_id`, `method`, and the route template. An optional `actor`
+relation may contain current `id`/`name`, or null for an unavailable account; the
+original `actor_id` must remain intact. Do not return passwords, tokens, clinical
+text, profile snapshots, arbitrary request bodies, or expanded request URLs.
+
+The viewer displays original action/type identifiers alongside readable labels,
+UTC timestamps to the second (full timestamp in the time element's title), actor
+and resource IDs, and allowlisted request context. Unknown resource/action values
+remain visible. Null actors are labelled System / unauthenticated. User filtering
+uses IDs so it does not depend on a directory that excludes deleted accounts.
+
+Filters apply on submit and reset pagination to page 1; typing does not query.
+Impossible dates, reversed ranges, and invalid identifiers are rejected locally.
+Backend 422 messages, 403/404, general errors with retry, loading/refreshing, and
+unfiltered/filtered empty states are supported. Errors hide cached rows. Dates are
+compared as calendar strings without converting them to the browser timezone.
+
+`npm run test:audit-logs` verifies frontend authorization, denied service calls
+without HTTP, query envelopes/filters, UTC formatting, pagination, role revocation,
+and read-only rendering. `npm run test:audit-logs:browser` exercises the viewer
+against the **mocked proposed contract**, including non-admin direct URLs and
+suppression of unauthorized UI requests. Use `AUDIT_LOGS_TEST_URL`,
+`AUDIT_LOGS_TEST_API_URL`, and `BROWSER_PATH` as needed. These tests do not prove
+live API authorization. Backend integration tests must separately verify 401/403,
+admin reads, date bounds, pagination, and rejection of all mutation routes.

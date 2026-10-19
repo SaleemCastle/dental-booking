@@ -47,7 +47,7 @@ const {
     getUserPermissionSet,
 } = permissions
 
-const admin = { roles: ['admin'] }
+const admin = { roles: [{ name: 'admin', slug: 'admin' }] }
 const receptionist = { roles: [{ name: 'receptionist' }] }
 const billing = { roles: ['billing'] }
 const custom = {
@@ -80,6 +80,7 @@ assert.deepEqual(
         'messages',
         'payment_information',
         'settings',
+        'audit_logs',
     ],
 )
 
