@@ -169,6 +169,18 @@ export const useAuditLogs = () => {
     )
     const rateLimited =
         list.rateLimited || options.rateLimited || detail.rateLimited
+    const applyFilters = useCallback(
+        (next: AuditFilters) => {
+            if (canView && !rateLimited)
+                setQuery(current => ({
+                    owner: user,
+                    filters: next,
+                    page: 1,
+                    revision: current.revision,
+                }))
+        },
+        [canView, rateLimited, user],
+    )
     return {
         canView,
         session: user,
@@ -192,15 +204,7 @@ export const useAuditLogs = () => {
         retryDetail: () => {
             if (!rateLimited) detail.retry()
         },
-        applyFilters: (next: AuditFilters) => {
-            if (canView && !rateLimited)
-                setQuery(current => ({
-                    owner: user,
-                    filters: next,
-                    page: 1,
-                    revision: current.revision,
-                }))
-        },
+        applyFilters,
         changePage: (next: number) => {
             if (canView && !rateLimited)
                 setQuery(current => ({

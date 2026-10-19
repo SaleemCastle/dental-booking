@@ -89,6 +89,7 @@ const RecordContext = ({ record }: { record: AuditLog }) => (
 )
 const AuditLogViewer = () => {
     const feed = useAuditLogs()
+    const { applyFilters } = feed
     const [draft, setDraft] = useState<AuditFilters>(emptyAuditFilters)
     const [errors, setErrors] = useState<ApiFieldErrors>({})
     const [timeZone, setTimeZone] = useState('UTC')
@@ -115,12 +116,19 @@ const AuditLogViewer = () => {
             const next = cleanAuditFilters(draft)
             const validation = validateAuditFilters(next)
             setErrors(validation)
-            if (!Object.keys(validation).length) feed.applyFilters(next)
+            if (!Object.keys(validation).length) applyFilters(next)
         }, 500)
         return () => {
             if (timer.current) clearTimeout(timer.current)
         }
-    }, [draft, feed.canView, feed.rateLimited, sameFilters, feed.session])
+    }, [
+        draft,
+        feed.canView,
+        feed.rateLimited,
+        sameFilters,
+        feed.session,
+        applyFilters,
+    ])
     const submit = (event: FormEvent) => {
         event.preventDefault()
         if (timer.current) clearTimeout(timer.current)

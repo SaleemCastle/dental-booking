@@ -452,6 +452,10 @@ const run = async () => {
         false,
     )
     assert.ok(allReads().every(item => item.method === 'GET'))
+    assert.ok(
+        browser.cancelledRequests.size >= 2,
+        'Obsolete list and detail HTTP requests are actually cancelled',
+    )
     assert.deepEqual(browser.errors, [])
     console.log(
         'Audit browser checks passed: documented endpoints, admin/auditor slugs, filters/options/details, precision/offsets, cancellation races, 422/429/errors, account changes/logout and revoked access.',
