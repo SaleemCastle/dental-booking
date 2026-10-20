@@ -354,7 +354,7 @@ const Home: NextPage = () => {
                 <title>Dental Booking</title>
             </Head>
 
-            <div className="relative w-full min-h-screen flex flex-row bg-clinic-canvas">
+            <div className="relative w-full min-h-screen flex flex-col md:flex-row bg-clinic-canvas">
                 <Sidebar
                     activeTab={currentTab}
                     setActiveTab={setCurrentTab}

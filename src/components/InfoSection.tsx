@@ -13,8 +13,8 @@ const InfoSection = ({
     onPatientSearchClear,
 }: IInfoSectionProps & { onAddPatient?: () => void }) => {
     return (
-        <div className="flex flex-row px-8 h-20 border-b border-clinic-line bg-white/80 justify-between items-center">
-            <div className="flex flex-row gap-4 items-center">
+        <div className="flex flex-row gap-3 px-4 sm:px-8 min-h-[80px] border-b border-clinic-line bg-white/80 justify-between items-center">
+            <div className="flex min-w-0 flex-row gap-4 items-center">
                 <span>
                     <BsPersonFill className="text-clinic-blue text-2xl" />
                 </span>
@@ -22,8 +22,10 @@ const InfoSection = ({
                     <p className="text-xs font-semibold uppercase text-clinic-muted">
                         Workspace
                     </p>
-                    <h3 className="font-extrabold text-xl capitalize text-clinic-ink">
-                        {formatModuleLabel(currentTab)}
+                    <h3 className="font-extrabold text-lg sm:text-xl capitalize text-clinic-ink">
+                        {currentTab === 'user_management'
+                            ? 'User & Role Management'
+                            : formatModuleLabel(currentTab)}
                     </h3>
                 </div>
             </div>
@@ -34,6 +36,7 @@ const InfoSection = ({
                     'treatments',
                     'calendar',
                     'audit_logs',
+                    'user_management',
                 ].includes(currentTab) && (
                     <Searchbar
                         value={

@@ -167,6 +167,31 @@ export const apiClient = {
 export const ensureCsrfCookie = () =>
     apiClient.get<null>('/sanctum/csrf-cookie')
 
+// Axios 0.21 requires CancelToken; keep that compatibility inside the client.
+export const apiRequestWithSignal = async <T>(
+    config: AxiosRequestConfig,
+    signal?: AbortSignal,
+): Promise<ApiResponse<T>> => {
+    const aborted = () => new DOMException('Request cancelled.', 'AbortError')
+    if (signal?.aborted) throw aborted()
+    const source = Axios.CancelToken.source()
+    const cancel = () => source.cancel('Request cancelled.')
+    signal?.addEventListener('abort', cancel, { once: true })
+    try {
+        const response = await apiClient.request<T>({
+            ...config,
+            cancelToken: source.token,
+        })
+        if (signal?.aborted) throw aborted()
+        return response
+    } catch (error) {
+        if (signal?.aborted) throw aborted()
+        throw error
+    } finally {
+        signal?.removeEventListener('abort', cancel)
+    }
+}
+
 export const getValidationErrors = (error: unknown): ApiFieldErrors => {
     const apiError = normalizeAxiosError(error)
 

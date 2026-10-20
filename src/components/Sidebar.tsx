@@ -36,6 +36,7 @@ const getIcons = (tab: Tabs, active: boolean) => {
         case Tabs.Settings:
             return <IoSettings className={iconClass} />
         case Tabs.AuditLogs:
+        case Tabs.UserManagement:
             return <FiShield className={iconClass} />
     }
 }
@@ -59,7 +60,7 @@ const Sidebar = ({
     const displayEmail = getAuthUserEmail(user ?? null)
 
     return (
-        <aside className="flex min-h-screen w-[280px] shrink-0 flex-col border-r border-clinic-line bg-white py-5">
+        <aside className="flex w-full shrink-0 flex-col border-r border-clinic-line bg-white py-5 md:min-h-screen md:w-[280px]">
             <div className="min-h-0 flex-1">
                 <div className="flex flex-row px-5 gap-3 items-center">
                     <Image
