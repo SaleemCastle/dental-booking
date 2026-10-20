@@ -81,6 +81,7 @@ assert.deepEqual(
         'payment_information',
         'settings',
         'audit_logs',
+        'user_management',
     ],
 )
 

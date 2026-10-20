@@ -33,6 +33,7 @@ export type AppModule =
     | 'payment_information'
     | 'settings'
     | 'audit_logs'
+    | 'user_management'
 
 interface UserRole {
     name?: string
@@ -152,6 +153,12 @@ export const navigationModules: NavigationModule[] = [
         // Audit access uses role slugs, independently of permission grants.
         permissions: [],
     },
+    {
+        id: 'user_management',
+        label: Tabs.UserManagement,
+        href: { pathname: '/', query: { tab: 'user_management' } },
+        permissions: [],
+    },
 ]
 
 const normalizeToken = (value: unknown) =>
@@ -234,42 +241,51 @@ const extractUserPermissions = (user: AuthUser): PermissionExtraction => {
     if ('permissions' in user) {
         hasPermissionPayload = true
         getNamedValues(user.permissions, [
-            'name',
             'slug',
             'key',
             'code',
+            'name',
         ]).forEach(permission => addPermission(permissions, permission))
     }
 
     if ('abilities' in user) {
         hasPermissionPayload = true
         getNamedValues(user.abilities, [
-            'name',
             'slug',
             'key',
             'code',
+            'name',
         ]).forEach(permission => addPermission(permissions, permission))
     }
 
     if ('can' in user) {
-        hasPermissionPayload = addPermissionsFromCanMap(permissions, user.can)
+        hasPermissionPayload =
+            addPermissionsFromCanMap(permissions, user.can) ||
+            hasPermissionPayload
     }
+
+    // The API's flattened permissions are authoritative, including an empty
+    // array after an admin removes a role's grants. Do not add legacy defaults.
+    if (hasPermissionPayload) return { hasPermissionPayload, permissions }
 
     if ('roles' in user) {
         hasPermissionPayload = true
-        getNamedValues(user.roles, ['name', 'slug', 'key']).forEach(role =>
-            addRolePermissions(permissions, role),
-        )
-
         if (Array.isArray(user.roles)) {
             user.roles.forEach(role => {
+                if (typeof role === 'string')
+                    addRolePermissions(permissions, role)
                 if (role && typeof role === 'object') {
                     const record = role as Record<string, unknown>
+                    if (!('permissions' in record))
+                        addRolePermissions(
+                            permissions,
+                            record.slug ?? record.key ?? record.name,
+                        )
                     getNamedValues(record.permissions, [
-                        'name',
                         'slug',
                         'key',
                         'code',
+                        'name',
                     ]).forEach(permission =>
                         addPermission(permissions, permission),
                     )
@@ -290,14 +306,15 @@ const extractUserPermissions = (user: AuthUser): PermissionExtraction => {
 
             if (role && typeof role === 'object') {
                 const record = role as Record<string, unknown>
-                const roleName = record.name ?? record.slug ?? record.key
+                const roleName = record.slug ?? record.key ?? record.name
 
-                addRolePermissions(permissions, roleName)
+                if (!('permissions' in record))
+                    addRolePermissions(permissions, roleName)
                 getNamedValues(record.permissions, [
-                    'name',
                     'slug',
                     'key',
                     'code',
+                    'name',
                 ]).forEach(permission => addPermission(permissions, permission))
             }
         }
@@ -412,11 +429,26 @@ export const canViewAuditLogs = (user: AuthUser | null) => {
     )
 }
 
+// Management requires the authenticated API's canonical admin role. Generic
+// permission grants, legacy sessions and super-admin flags are insufficient.
+export const canManageUsers = (user: AuthUser | null) =>
+    Boolean(
+        user &&
+            Array.isArray(user.roles) &&
+            user.roles.some(
+                role =>
+                    role &&
+                    typeof role === 'object' &&
+                    (role as { slug?: string }).slug === 'admin',
+            ),
+    )
+
 export const canAccessModule = (
     user: AuthUser | null,
     module: NavigationModule,
 ) => {
     if (module.id === 'audit_logs') return canViewAuditLogs(user)
+    if (module.id === 'user_management') return canManageUsers(user)
     const permissions = getUserPermissionSet(user)
 
     return module.permissions.every(permission => permissions.has(permission))

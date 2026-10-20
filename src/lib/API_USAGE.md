@@ -37,6 +37,65 @@ resolution. Components should use `useAuth()` or `useAuthSession()` and check
 `status`, `isLoading`, or `isAuthenticated` before running authenticated API
 calls. Do not create another session fetcher in a component.
 
+## User & Role Management
+
+Administrators open `/?tab=user_management` from protected navigation. Both
+the component and its service require an actual `roles[].slug === 'admin'`
+from `/api/user`; wildcard permissions, legacy role labels, auditors and
+super-admin flags alone do not grant management access. Backend authorization
+remains authoritative.
+
+The service follows the local OpenAPI 1.7.2 contract and backend
+`docs/roles.md`:
+
+- `GET /api/users` returns unpaginated `data.users`; search, role and status
+  filters operate on the full collection locally.
+- `GET /api/users/{id}` returns `data.user`. The editor fetches fresh details
+  and preselects every current role before enabling changes.
+- `GET /api/roles` returns `data.roles` with nested permissions, including
+  admin, dentist, hygienist, receptionist, billing and auditor system roles.
+- `GET /api/permissions` returns `data.permissions` for drag/drop and
+  keyboard/touch Add/Remove controls. Changes remain drafts until confirmed.
+- `PUT /api/users/{id}/roles` replaces roles using `{ role_ids: number[] }`
+  and returns `data.user`; an empty array removes all roles.
+- `PUT /api/roles/{id}/permissions` replaces permissions using
+  `{ permission_ids: number[] }` and returns `data.role`; an empty array
+  removes all permissions. Permission definitions and role identities are
+  not edited by this screen.
+
+All assignment changes require a review/confirmation step. Returned records
+update the UI immediately. Self role changes and permission changes refresh
+the canonical session; the API's flattened permissions (including an empty
+array) override legacy role defaults so removed grants disappear from
+navigation. Reads are cancellable and scoped to the authenticated session.
+401/403 responses clear management data and re-resolve authentication/access.
+Other failures display the centralized API message, field errors, code and
+request ID, preserve drafts, and support explicit retry without auto-submitting.
+
+The current backend has no account-status field. The Status column displays
+email verification explicitly unless a backend `status` is supplied. No active
+or suspended state is inferred from email verification.
+
+The UI blocks removal of the last admin using the complete user collection,
+independently of filters, and honors `required_admin` / `can_remove_admin`
+restrictions if a future backend supplies them. **The current backend allows
+last-admin removal and has no atomic safeguard.** This client guard prevents
+accidents but cannot prevent concurrent administrators or direct API callers
+from removing the last admin; that requires a backend transaction-level rule.
+Any backend rejection (including 409/422) is shown through `ApiError`.
+
+Validation: `npm run test:user-management` covers authorization, API contracts,
+filters, authoritative permissions and admin protection. Run
+`npm run test:user-management:browser` against a running app (Node 22+ and
+Chrome/Edge required). Browser fixtures intercept every API request and cover
+assignment review, preselection, updates/removal, permission drag/drop,
+keyboard focus, mobile layout, failures/retries and revoked/self-demoted access.
+Set `USER_MANAGEMENT_TEST_URL` to use a non-default frontend port.
+
+To verify production while a development server is running, set
+`NEXT_DIST_DIR=.next-validation` for both `npm run build` and `npm run start`.
+The default output directory remains `.next`.
+
 ## Treatment Catalog
 
 The catalog is available at `/?tab=treatments`. It uses the treatment contract

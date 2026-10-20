@@ -5,7 +5,9 @@
     "scripts": {
         "dev": "next dev",
         "build": "next build",
-        "test": "npm run test:api && npm run test:auth-session && npm run test:permissions && npm run test:wizard && npm run test:treatments && npm run test:appointments && npm run test:clinical-notes && npm run test:tasks && npm run test:audit-logs",
+        "test": "npm run test:api && npm run test:auth-session && npm run test:permissions && npm run test:wizard && npm run test:treatments && npm run test:appointments && npm run test:clinical-notes && npm run test:tasks && npm run test:audit-logs && npm run test:user-management",
+        "test:user-management": "node tests/user-management.test.cjs",
+        "test:user-management:browser": "node tests/user-management.browser.cjs",
         "test:api": "node tests/api-contract.test.cjs",
         "test:auth-session": "node tests/auth-session.test.cjs",
         "test:permissions": "node tests/permissions.test.cjs",

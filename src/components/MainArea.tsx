@@ -6,6 +6,7 @@ import OverviewDashboard from './OverviewDashboard'
 import TreatmentCatalog from './TreatmentCatalog'
 import AppointmentSchedule from './AppointmentSchedule'
 import AuditLogViewer from './AuditLogViewer'
+import UserRoleManagement from './UserRoleManagement'
 import { PatientArchivedFilter, PatientPayload } from '../services/patients'
 
 const MainArea = ({
@@ -74,6 +75,8 @@ const MainArea = ({
                 return <AppointmentSchedule />
             case 'audit_logs':
                 return <AuditLogViewer />
+            case 'user_management':
+                return <UserRoleManagement />
             case 'patient_list':
                 return (
                     <PatientList
@@ -120,9 +123,13 @@ const MainArea = ({
                 onPatientSearchChange={onPatientSearchChange}
                 onPatientSearchClear={onPatientSearchClear}
             />
-            {!['dashboard', 'treatments', 'calendar', 'audit_logs'].includes(
-                currentTab,
-            ) && (
+            {![
+                'dashboard',
+                'treatments',
+                'calendar',
+                'audit_logs',
+                'user_management',
+            ].includes(currentTab) && (
                 <CurrentTabDetail
                     currentTab={currentTab}
                     patientTotal={patientMeta?.total}
