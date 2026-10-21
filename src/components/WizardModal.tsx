@@ -98,7 +98,7 @@ const WizardModal = ({
             <section
                 aria-labelledby="wizard-title"
                 aria-modal="true"
-                className="flex max-h-[92vh] w-full max-w-xl flex-col overflow-hidden rounded-lg border border-clinic-line bg-white shadow-clinic self-start ml-auto mr-4"
+                className="transition-all duration-300 ease-in-out flex max-h-[92vh] w-full max-w-xl flex-col overflow-hidden rounded-lg border border-clinic-line bg-white shadow-clinic self-start ml-auto mr-4"
                 role="dialog">
                 <header className="shrink-0 border-b border-clinic-line bg-white px-6 py-5">
                     <div className="flex items-start justify-between gap-4 border-b border-clinic-line pb-6">

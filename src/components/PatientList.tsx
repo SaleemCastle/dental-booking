@@ -254,11 +254,45 @@ const PatientList = ({
             <input
                 name={name}
                 value={editValues?.[name] ?? ''}
-                className={fieldClass}
+                className={`${fieldClass} h-12 px-3`}
                 disabled={disabled}
                 onChange={updateField}
             />
         </label>
+    )
+
+    const renderGenderSelector = (disabled = false) => (
+        <fieldset className="block">
+            <legend className="text-xs font-bold uppercase text-clinic-muted">
+                Gender
+            </legend>
+            <div className="mt-2 grid grid-cols-2 gap-3">
+                {['Male', 'Female'].map(gender => (
+                    <label
+                        key={gender}
+                        className={`flex h-12 cursor-pointer items-center gap-3 rounded-md border px-3 text-sm font-bold text-clinic-ink transition-colors focus-within:ring-2 focus-within:ring-clinic-blue/20 ${
+                            editValues?.sex === gender
+                                ? 'border-clinic-blue'
+                                : 'border-clinic-line'
+                        } ${
+                            disabled
+                                ? 'cursor-not-allowed opacity-60'
+                                : ''
+                        }`}>
+                        <input
+                            type="radio"
+                            name="sex"
+                            value={gender}
+                            checked={editValues?.sex === gender}
+                            disabled={disabled}
+                            onChange={updateField}
+                            className="h-5 w-5 border-clinic-line text-clinic-blue focus:ring-clinic-blue disabled:cursor-not-allowed"
+                        />
+                        {gender}
+                    </label>
+                ))}
+            </div>
+        </fieldset>
     )
 
     const renderTextArea = (
@@ -527,9 +561,7 @@ const PatientList = ({
                                         'Last name',
                                         !permissions.canEditDemographics,
                                     )}
-                                    {renderInput(
-                                        'sex',
-                                        'Sex',
+                                    {renderGenderSelector(
                                         !permissions.canEditDemographics,
                                     )}
                                     {renderInput(

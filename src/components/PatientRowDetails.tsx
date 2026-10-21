@@ -43,11 +43,6 @@ const PatientRowDetails = ({
                 </span>
                 <div className="flex flex-col ml-2">
                     <h3 className="font-semibold text-clinic-ink">{`${firstName} ${lastName}`}</h3>
-                    <h3 className="text-xs text-clinic-muted">
-                        {archived
-                            ? 'Archived patient record'
-                            : 'Active patient record'}
-                    </h3>
                 </div>
             </div>
 

@@ -237,7 +237,7 @@ const PatientRegistrationWizard = ({
     }
 
     const inputClass =
-        'mt-2 block w-full rounded-md border-clinic-line bg-white text-sm text-clinic-ink shadow-sm focus:border-clinic-blue focus:ring-clinic-blue/20'
+        'mt-2 block h-12 w-full rounded-md border-clinic-line bg-white px-3 text-sm text-clinic-ink shadow-sm focus:border-clinic-blue focus:ring-clinic-blue/20'
 
     const renderInput = (
         field: keyof PatientFormValues,
@@ -266,7 +266,41 @@ const PatientRegistrationWizard = ({
                     <div className="grid gap-5 md:grid-cols-2">
                         {renderInput('firstName', 'First name', 'Jane')}
                         {renderInput('lastName', 'Last name', 'Doe')}
-                        {renderInput('sex', 'Sex', 'Female')}
+                        <fieldset className="block">
+                            <legend className="text-sm font-bold text-clinic-ink">
+                                Gender
+                            </legend>
+                            <div className="mt-2 grid grid-cols-2 gap-3">
+                                {['Male', 'Female'].map((gender, index) => (
+                                    <label
+                                        key={gender}
+                                        className={`flex h-12 cursor-pointer items-center gap-3 rounded-md border px-3 text-sm font-bold transition-colors focus-within:ring-2 focus-within:ring-clinic-blue/20 ${
+                                            values.sex === gender
+                                                ? 'border-clinic-blue text-clinic-ink'
+                                                : 'border-clinic-line text-clinic-ink'
+                                        }`}>
+                                        <input
+                                            ref={
+                                                index === 0
+                                                    ? setFieldRef('sex')
+                                                    : undefined
+                                            }
+                                            type="radio"
+                                            name="sex"
+                                            value={gender}
+                                            checked={values.sex === gender}
+                                            onChange={updateValue}
+                                            className="h-5 w-5 border-clinic-line text-clinic-blue focus:ring-clinic-blue"
+                                        />
+                                        {gender}
+                                    </label>
+                                ))}
+                            </div>
+                            <InputError
+                                messages={errors.sex}
+                                className="mt-2"
+                            />
+                        </fieldset>
                     </div>
                 )
             case 1:
