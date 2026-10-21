@@ -94,7 +94,7 @@ const WizardModal = ({
     }
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-clinic-ink/45 px-4 py-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-clinic-ink/50 px-4 py-6">
             <section
                 aria-labelledby="wizard-title"
                 aria-modal="true"
