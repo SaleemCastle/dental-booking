@@ -4,6 +4,7 @@ import Head from 'next/head'
 import { useRouter } from 'next/router'
 import Sidebar from '../components/Sidebar'
 import MainArea from '../components/MainArea'
+import WorkspaceHeader from '../components/WorkspaceHeader'
 import PatientRegistrationWizard from '../components/PatientRegistrationWizard'
 import { NextPage } from 'next'
 import { useDispatch } from 'react-redux'
@@ -32,6 +33,7 @@ const patientPageSize = 8
 const Home: NextPage = () => {
     const router = useRouter()
     const [currentTab, setCurrentTab] = useState<AppModule>('dashboard')
+    const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
     const [isLoggingOut, setIsLoggingOut] = useState(false)
     const [isPatientWizardOpen, setIsPatientWizardOpen] = useState(false)
     const [patientSearch, setPatientSearch] = useState('')
@@ -354,44 +356,54 @@ const Home: NextPage = () => {
                 <title>Dental Booking</title>
             </Head>
 
-            <div className="relative w-full min-h-screen flex flex-col md:flex-row bg-clinic-canvas">
-                <Sidebar
-                    activeTab={currentTab}
-                    setActiveTab={setCurrentTab}
-                    modules={authorizedModules}
+            <div className="relative min-h-screen w-full bg-clinic-canvas">
+                <WorkspaceHeader
+                    currentTab={currentTab}
                     user={user}
-                    isLoggingOut={isLoggingOut}
+                    patientSearch={patientSearch}
+                    onPatientSearchChange={handlePatientSearchChange}
+                    onPatientSearchClear={handlePatientSearchClear}
+                    onAddPatient={() => setIsPatientWizardOpen(true)}
+                    isSidebarCollapsed={isSidebarCollapsed}
+                    onToggleSidebar={() =>
+                        setIsSidebarCollapsed(isCollapsed => !isCollapsed)
+                    }
                     onLogout={handleLogout}
+                    isLoggingOut={isLoggingOut}
                 />
-                {canAccessModuleId(user, currentTab) && (
-                    <MainArea
-                        currentTab={currentTab}
-                        onAddPatient={() => setIsPatientWizardOpen(true)}
-                        patientSearch={patientSearch}
-                        onPatientSearchChange={handlePatientSearchChange}
-                        onPatientSearchClear={handlePatientSearchClear}
-                        patientMeta={patientMeta}
-                        patientListState={patientListState}
-                        selectedPatient={selectedPatient}
-                        patientDetailState={patientDetailState}
-                        patientMutationState={patientMutationState}
-                        patientPermissions={patientPermissions}
-                        archivedPatientFilter={archivedPatientFilter}
-                        onArchivedPatientFilterChange={
-                            handleArchivedPatientFilterChange
-                        }
-                        onPatientSelect={handlePatientSelect}
-                        onOpenRelatedPatient={handleOpenRelatedPatient}
-                        onPatientDetailRetry={() =>
-                            setPatientDetailVersion(value => value + 1)
-                        }
-                        onPatientDetailClose={handlePatientDetailClose}
-                        onPatientUpdate={handlePatientUpdate}
-                        onPatientArchive={handlePatientArchive}
-                        onPatientPageChange={handlePatientPageChange}
-                        onPatientListRetry={() => void loadPatients()}
+                <div className="flex min-h-[calc(100vh-4rem)] flex-col md:flex-row">
+                    <Sidebar
+                        activeTab={currentTab}
+                        setActiveTab={setCurrentTab}
+                        modules={authorizedModules}
+                        isCollapsed={isSidebarCollapsed}
                     />
-                )}
+                    {canAccessModuleId(user, currentTab) && (
+                        <MainArea
+                            currentTab={currentTab}
+                            patientMeta={patientMeta}
+                            patientListState={patientListState}
+                            selectedPatient={selectedPatient}
+                            patientDetailState={patientDetailState}
+                            patientMutationState={patientMutationState}
+                            patientPermissions={patientPermissions}
+                            archivedPatientFilter={archivedPatientFilter}
+                            onArchivedPatientFilterChange={
+                                handleArchivedPatientFilterChange
+                            }
+                            onPatientSelect={handlePatientSelect}
+                            onOpenRelatedPatient={handleOpenRelatedPatient}
+                            onPatientDetailRetry={() =>
+                                setPatientDetailVersion(value => value + 1)
+                            }
+                            onPatientDetailClose={handlePatientDetailClose}
+                            onPatientUpdate={handlePatientUpdate}
+                            onPatientArchive={handlePatientArchive}
+                            onPatientPageChange={handlePatientPageChange}
+                            onPatientListRetry={() => void loadPatients()}
+                        />
+                    )}
+                </div>
             </div>
             <PatientRegistrationWizard
                 isOpen={isPatientWizardOpen}
