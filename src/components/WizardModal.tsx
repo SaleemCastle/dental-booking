@@ -94,14 +94,14 @@ const WizardModal = ({
     }
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-clinic-ink/45 px-4 py-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-clinic-ink/50 px-4 py-6">
             <section
                 aria-labelledby="wizard-title"
                 aria-modal="true"
-                className="flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-lg border border-clinic-line bg-white shadow-clinic"
+                className="transition-all duration-300 ease-in-out flex max-h-[92vh] w-full max-w-xl flex-col overflow-hidden rounded-lg border border-clinic-line bg-white shadow-clinic self-start ml-auto mr-4"
                 role="dialog">
                 <header className="shrink-0 border-b border-clinic-line bg-white px-6 py-5">
-                    <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-start justify-between gap-4 border-b border-clinic-line pb-6">
                         <div>
                             <p className="text-xs font-bold uppercase text-clinic-muted">
                                 Data entry workflow
@@ -122,34 +122,54 @@ const WizardModal = ({
                         </button>
                     </div>
 
-                    <ol className="mt-6 grid gap-3 md:grid-cols-3">
+                    <ol className="mt-6 grid grid-cols-3">
                         {steps.map((step, index) => {
                             const isComplete =
                                 step.isComplete || index < currentStepIndex
                             const isCurrent = index === currentStepIndex
+                            const connectorWidth = isComplete
+                                ? 'w-full'
+                                : isCurrent
+                                ? 'w-1/2'
+                                : 'w-0'
 
                             return (
                                 <li
                                     key={step.id}
-                                    className="relative flex min-w-0 items-start gap-3">
+                                    aria-current={isCurrent ? 'step' : undefined}
+                                    className="relative flex min-w-0 flex-col items-center gap-3">
                                     {index < steps.length - 1 && (
-                                        <span className="absolute left-[18px] top-9 hidden h-px w-[calc(100%_-_24px)] bg-clinic-line md:block" />
+                                        <span
+                                            aria-hidden="true"
+                                            className="absolute left-[calc(50%+30px)] top-[21px] h-0.5 w-[calc(100%-60px)] bg-clinic-line">
+                                            <span
+                                                className={`block h-full transition-all duration-300 ${
+                                                    isComplete
+                                                        ? 'bg-clinic-teal'
+                                                        : isCurrent
+                                                        ? 'bg-clinic-blue'
+                                                        : ''
+                                                } ${connectorWidth}`}
+                                            />
+                                        </span>
                                     )}
-                                    <span
-                                        className={`z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border text-sm font-extrabold ${
-                                            isComplete
-                                                ? 'border-clinic-blue bg-clinic-blue text-white'
-                                                : isCurrent
-                                                ? 'border-clinic-blue bg-clinic-sky text-clinic-blue'
-                                                : 'border-clinic-line bg-white text-clinic-muted'
-                                        }`}>
-                                        {isComplete ? (
-                                            <FiCheck />
-                                        ) : (
-                                            step.icon ?? index + 1
-                                        )}
-                                    </span>
-                                    <span className="min-w-0">
+                                    <div className={`bg-transparent ${isComplete ? 'border-clinic-teal' : isCurrent ? 'border-clinic-blue' : 'border-none'} border-dashed h-11 w-11 flex items-center justify-center rounded-full ${isCurrent ? 'border-2' : 'border-none'}`}>
+                                        <span
+                                            className={`z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border text-sm font-extrabold ${
+                                                isComplete
+                                                    ? 'border-clinic-teal bg-clinic-teal text-white'
+                                                    : isCurrent
+                                                    ? 'border-clinic-blue bg-clinic-blue text-white'
+                                                    : 'border-clinic-line bg-white text-clinic-muted'
+                                            }`}>
+                                            {isComplete ? (
+                                                <FiCheck />
+                                            ) : (
+                                                step.icon ?? index + 1
+                                            )}
+                                        </span>
+                                    </div>
+                                    <span className="min-w-0 text-center">
                                         <span className="text-[11px] font-bold uppercase text-clinic-muted">
                                             Step {index + 1}
                                         </span>

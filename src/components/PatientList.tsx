@@ -1,6 +1,5 @@
 import React, { ChangeEvent, useEffect, useMemo, useState } from 'react'
 import { useSelector } from 'react-redux'
-import { patientDataHeadings } from '../Constants'
 import PatientRowDetails, { isArchivedPatient } from './PatientRowDetails'
 import { AppState } from '../store/store'
 import { PaginationMeta } from '../lib/api'
@@ -254,11 +253,45 @@ const PatientList = ({
             <input
                 name={name}
                 value={editValues?.[name] ?? ''}
-                className={fieldClass}
+                className={`${fieldClass} h-12 px-3`}
                 disabled={disabled}
                 onChange={updateField}
             />
         </label>
+    )
+
+    const renderGenderSelector = (disabled = false) => (
+        <fieldset className="block">
+            <legend className="text-xs font-bold uppercase text-clinic-muted">
+                Gender
+            </legend>
+            <div className="mt-2 grid grid-cols-2 gap-3">
+                {['Male', 'Female'].map(gender => (
+                    <label
+                        key={gender}
+                        className={`flex h-12 cursor-pointer items-center gap-3 rounded-md border px-3 text-sm font-bold text-clinic-ink transition-colors focus-within:ring-2 focus-within:ring-clinic-blue/20 ${
+                            editValues?.sex === gender
+                                ? 'border-clinic-blue'
+                                : 'border-clinic-line'
+                        } ${
+                            disabled
+                                ? 'cursor-not-allowed opacity-60'
+                                : ''
+                        }`}>
+                        <input
+                            type="radio"
+                            name="sex"
+                            value={gender}
+                            checked={editValues?.sex === gender}
+                            disabled={disabled}
+                            onChange={updateField}
+                            className="h-5 w-5 border-clinic-line text-clinic-blue focus:ring-clinic-blue disabled:cursor-not-allowed"
+                        />
+                        {gender}
+                    </label>
+                ))}
+            </div>
+        </fieldset>
     )
 
     const renderTextArea = (
@@ -304,29 +337,53 @@ const PatientList = ({
                     : 'grid-cols-1'
             }`}>
             <div className="min-w-0">
-                <div className="flex flex-row w-full items-center pl-4 gap-2 pb-3">
-                    <div className="h-4 w-4 border border-clinic-line rounded bg-white mr-3" />
-                    {patientDataHeadings.map((heading, index) => (
-                        <h3
-                            className={`flex-[1.5] ${
-                                index === 0 ? 'flex-grow-[2]' : ''
-                            } text-xs font-bold uppercase text-clinic-muted`}
-                            key={index}>
-                            {heading}
-                        </h3>
-                    ))}
+                <div className="overflow-x-auto rounded-lg border border-clinic-line bg-white">
+                    <table className="w-full min-w-[900px] border-collapse text-left">
+                        <thead className="bg-slate-50">
+                            <tr className="border-b border-clinic-line">
+                                {[
+                                    'Patient name',
+                                    'Gender',
+                                    'Address',
+                                    'Appointment',
+                                    'Status',
+                                    'Registered',
+                                ].map(heading => (
+                                    <th
+                                        key={heading}
+                                        scope="col"
+                                        className="whitespace-nowrap px-4 py-3 text-[11px] font-bold uppercase tracking-wide text-clinic-muted">
+                                        {heading}
+                                    </th>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {isLoading &&
+                                [0, 1, 2, 3].map(item => (
+                                    <tr
+                                        key={item}
+                                        aria-hidden="true"
+                                        className="border-b border-clinic-line last:border-0">
+                                        <td colSpan={6} className="px-4 py-3">
+                                            <div className="h-9 animate-pulse rounded bg-clinic-canvas" />
+                                        </td>
+                                    </tr>
+                                ))}
+                            {showRows &&
+                                patients.map((patient: Patient) => (
+                                    <PatientRowDetails
+                                        key={patient.id}
+                                        info={patient}
+                                        isSelected={
+                                            selectedPatient?.id === patient.id
+                                        }
+                                        onSelect={onSelectPatient}
+                                    />
+                                ))}
+                        </tbody>
+                    </table>
                 </div>
-
-                {isLoading ? (
-                    <div className="space-y-3">
-                        {[0, 1, 2, 3].map(item => (
-                            <div
-                                key={item}
-                                className="h-[66px] animate-pulse rounded-md border border-clinic-line bg-white"
-                            />
-                        ))}
-                    </div>
-                ) : null}
 
                 {errorMessage ? (
                     <div className="rounded-md border border-rose-200 bg-white p-10 text-center shadow-sm">
@@ -344,17 +401,6 @@ const PatientList = ({
                         </button>
                     </div>
                 ) : null}
-
-                {showRows
-                    ? patients.map((patient: Patient) => (
-                          <PatientRowDetails
-                              key={patient.id}
-                              info={patient}
-                              isSelected={selectedPatient?.id === patient.id}
-                              onSelect={onSelectPatient}
-                          />
-                      ))
-                    : null}
 
                 {showEmpty ? (
                     <div className="rounded-md border border-dashed border-clinic-line bg-white p-10 text-center shadow-sm">
@@ -527,9 +573,7 @@ const PatientList = ({
                                         'Last name',
                                         !permissions.canEditDemographics,
                                     )}
-                                    {renderInput(
-                                        'sex',
-                                        'Sex',
+                                    {renderGenderSelector(
                                         !permissions.canEditDemographics,
                                     )}
                                     {renderInput(

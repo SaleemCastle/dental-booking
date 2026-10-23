@@ -1,5 +1,4 @@
 import React from 'react'
-import InfoSection from './InfoSection'
 import CurrentTabDetail from './CurrentTabDetail'
 import PatientList from './PatientList'
 import OverviewDashboard from './OverviewDashboard'
@@ -11,10 +10,6 @@ import { PatientArchivedFilter, PatientPayload } from '../services/patients'
 
 const MainArea = ({
     currentTab,
-    onAddPatient,
-    patientSearch,
-    onPatientSearchChange,
-    onPatientSearchClear,
     patientMeta,
     patientListState,
     selectedPatient,
@@ -33,10 +28,6 @@ const MainArea = ({
     onPatientDetailRetry,
 }: {
     currentTab: string
-    onAddPatient?: () => void
-    patientSearch?: string
-    onPatientSearchChange?: (value: string) => void
-    onPatientSearchClear?: () => void
     patientMeta?: import('../lib/api').PaginationMeta
     patientListState?: { isLoading: boolean; errorMessage: string }
     selectedPatient?: Patient | null
@@ -116,13 +107,6 @@ const MainArea = ({
     }
     return (
         <main className="min-w-0 flex-1 min-h-screen bg-clinic-canvas">
-            <InfoSection
-                currentTab={currentTab}
-                onAddPatient={onAddPatient}
-                patientSearch={patientSearch}
-                onPatientSearchChange={onPatientSearchChange}
-                onPatientSearchClear={onPatientSearchClear}
-            />
             {![
                 'dashboard',
                 'treatments',
