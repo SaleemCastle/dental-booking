@@ -18,60 +18,67 @@ const PatientRowDetails = ({
     isSelected = false,
     onSelect,
 }: IPatientRowDetails) => {
-    const { firstName, lastName, city, created_at } = info
+    const { firstName, lastName } = info
+    const fullName = `${firstName} ${lastName}`.trim()
     const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`
+    const address = [info.streetAddress, info.town, info.city]
+        .filter(Boolean)
+        .join(', ')
     const archived = isArchivedPatient(info)
 
     return (
-        <button
-            type="button"
-            aria-label={`View patient ${firstName} ${lastName}`}
-            className={`py-3 w-full rounded-md border flex flex-row items-center pl-4 gap-2 mb-3 text-left hover:shadow-row transition-all ${
-                isSelected
-                    ? 'border-clinic-blue bg-clinic-sky'
-                    : 'border-clinic-line bg-white'
-            } ${archived ? 'opacity-75' : ''}`}
-            onClick={() => onSelect?.(info)}>
-            <div className="h-4 w-4 border border-clinic-line rounded bg-white mr-3" />
-
-            <div className="flex flex-row" style={{ flex: 2 }}>
-                <span
-                    className={`h-10 w-10 rounded-full flex items-center justify-center ${
-                        archived ? 'bg-clinic-muted' : 'bg-clinic-teal'
-                    }`}>
-                    <h3 className="text-white font-medium">{initials}</h3>
+        <tr
+            className={`border-b border-clinic-line transition-colors hover:bg-clinic-canvas/70 ${
+                isSelected ? 'bg-clinic-sky/60' : 'bg-white'
+            } ${archived ? 'opacity-75' : ''}`}>
+            <td className="px-4 py-3">
+                <button
+                    type="button"
+                    aria-label={`View patient ${fullName}`}
+                    aria-pressed={isSelected}
+                    className="flex min-w-[210px] items-center gap-3 text-left"
+                    onClick={() => onSelect?.(info)}>
+                    <span
+                        aria-hidden="true"
+                        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white ${
+                            archived ? 'bg-clinic-muted' : 'bg-clinic-teal'
+                        }`}>
+                        {initials}
+                    </span>
+                    <span className="truncate text-sm font-semibold text-clinic-ink">
+                        {fullName}
+                    </span>
+                </button>
+            </td>
+            <td className="whitespace-nowrap px-4 py-3 text-sm text-clinic-muted">
+                {info.sex || 'Not captured'}
+            </td>
+            <td className="max-w-[240px] px-4 py-3 text-sm text-clinic-ink">
+                <span className="block truncate" title={address || undefined}>
+                    {address || 'Not captured'}
                 </span>
-                <div className="flex flex-col ml-2">
-                    <h3 className="font-semibold text-clinic-ink">{`${firstName} ${lastName}`}</h3>
-                </div>
-            </div>
-
-            <h3 className="flex-[1.5] font-semibold text-sm text-clinic-ink">
-                {'Not captured'}
-            </h3>
-
-            <h3 className="flex-[1.5] font-semibold text-sm text-clinic-ink">
-                {city}
-            </h3>
-            <h3 className="flex-[1.5] font-semibold text-sm">
-                <span className="rounded bg-clinic-sky px-2 py-1 text-xs text-clinic-blue">
+            </td>
+            <td className="max-w-[200px] px-4 py-3 text-sm text-clinic-ink">
+                <span
+                    className="block truncate"
+                    title={info.appointments || undefined}>
                     {info.appointments || 'None scheduled'}
                 </span>
-            </h3>
-            <h3 className="flex-[1.5] font-semibold text-sm">
+            </td>
+            <td className="whitespace-nowrap px-4 py-3">
                 <span
-                    className={`rounded px-2 py-1 text-xs ${
+                    className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
                         archived
                             ? 'bg-clinic-rose text-rose-700'
                             : 'bg-clinic-mint text-emerald-700'
                     }`}>
                     {archived ? 'Archived' : 'Active'}
                 </span>
-            </h3>
-            <h3 className="flex-[1.5] font-semibold text-sm text-clinic-muted">
-                {formatDate(created_at)}
-            </h3>
-        </button>
+            </td>
+            <td className="whitespace-nowrap px-4 py-3 text-sm text-clinic-muted">
+                {formatDate(info.created_at)}
+            </td>
+        </tr>
     )
 }
 
