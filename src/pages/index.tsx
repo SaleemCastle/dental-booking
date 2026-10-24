@@ -163,6 +163,14 @@ const Home: NextPage = () => {
         })
     }
 
+    const handlePatientCreateAppointment = () => {
+        void router.push(
+            { pathname: '/', query: { tab: 'calendar' } },
+            undefined,
+            { shallow: true },
+        )
+    }
+
     const handlePatientPageChange = (page: number) => {
         setPatientPage(page)
         setSelectedPatientId(null)
@@ -409,6 +417,9 @@ const Home: NextPage = () => {
                                 setPatientDetailVersion(value => value + 1)
                             }
                             onPatientDetailClose={handlePatientDetailClose}
+                            onPatientCreateAppointment={
+                                handlePatientCreateAppointment
+                            }
                             onPatientUpdate={handlePatientUpdate}
                             onPatientArchive={handlePatientArchive}
                             onPatientPageChange={handlePatientPageChange}

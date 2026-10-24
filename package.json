@@ -12,7 +12,7 @@
         "test:auth-session": "node tests/auth-session.test.cjs && node tests/tenant-session.test.cjs",
         "test:tenant-session:browser": "node tests/tenant-session.browser.cjs",
         "test:permissions": "node tests/permissions.test.cjs",
-        "test:wizard": "node tests/wizard.test.cjs",
+        "test:wizard": "node tests/wizard.test.cjs && node tests/patient-registration.test.cjs",
         "test:treatments": "node tests/treatments.test.cjs",
         "test:appointments": "node tests/appointments.test.cjs",
         "test:appointments:browser": "node tests/appointments.browser.cjs",

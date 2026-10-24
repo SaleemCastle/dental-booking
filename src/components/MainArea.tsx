@@ -20,6 +20,7 @@ const MainArea = ({
     onArchivedPatientFilterChange,
     onPatientSelect,
     onPatientDetailClose,
+    onPatientCreateAppointment,
     onPatientUpdate,
     onPatientArchive,
     onPatientPageChange,
@@ -47,6 +48,7 @@ const MainArea = ({
     onArchivedPatientFilterChange?: (value: PatientArchivedFilter) => void
     onPatientSelect?: (patient: Patient) => void
     onPatientDetailClose?: () => void
+    onPatientCreateAppointment?: () => void
     onPatientUpdate?: (payload: Partial<PatientPayload>) => void
     onPatientArchive?: () => void
     onPatientPageChange?: (page: number) => void
@@ -54,6 +56,12 @@ const MainArea = ({
     onOpenRelatedPatient?: (id: number) => void
     onPatientDetailRetry?: () => void
 }) => {
+    const showingPatientDetail =
+        currentTab === 'patient_list' &&
+        (Boolean(selectedPatient) ||
+            Boolean(patientDetailState?.isLoading) ||
+            Boolean(patientDetailState?.errorMessage))
+
     const renderTabDetailSection = (tab: string) => {
         switch (tab) {
             case 'dashboard':
@@ -96,6 +104,7 @@ const MainArea = ({
                         }
                         onSelectPatient={onPatientSelect}
                         onCloseDetail={onPatientDetailClose}
+                        onCreateAppointment={onPatientCreateAppointment}
                         onDetailRetry={onPatientDetailRetry}
                         onUpdatePatient={onPatientUpdate}
                         onArchivePatient={onPatientArchive}
@@ -107,22 +116,23 @@ const MainArea = ({
     }
     return (
         <main className="min-w-0 flex-1 min-h-screen bg-clinic-canvas">
-            {![
+            {!showingPatientDetail &&
+                ![
                 'dashboard',
                 'treatments',
                 'calendar',
                 'audit_logs',
                 'user_management',
-            ].includes(currentTab) && (
-                <CurrentTabDetail
-                    currentTab={currentTab}
-                    patientTotal={patientMeta?.total}
-                    archivedPatientFilter={archivedPatientFilter}
-                    onArchivedPatientFilterChange={
-                        onArchivedPatientFilterChange
-                    }
-                />
-            )}
+                ].includes(currentTab) && (
+                    <CurrentTabDetail
+                        currentTab={currentTab}
+                        patientTotal={patientMeta?.total}
+                        archivedPatientFilter={archivedPatientFilter}
+                        onArchivedPatientFilterChange={
+                            onArchivedPatientFilterChange
+                        }
+                    />
+                )}
             {renderTabDetailSection(currentTab)}
         </main>
     )
