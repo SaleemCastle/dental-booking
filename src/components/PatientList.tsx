@@ -8,6 +8,7 @@ import { FiX } from 'react-icons/fi'
 import { PatientPayload } from '../services/patients'
 import PatientClinicalNotes from './PatientClinicalNotes'
 import PatientFollowUps from './PatientFollowUps'
+import PatientDetail from './PatientDetail'
 
 interface PatientListProps {
     meta?: PaginationMeta
@@ -30,6 +31,7 @@ interface PatientListProps {
     onSelectPatient?: (patient: Patient) => void
     onCloseDetail?: () => void
     onDetailRetry?: () => void
+    onCreateAppointment?: () => void
     onUpdatePatient?: (payload: Partial<PatientPayload>) => void | Promise<void>
     onArchivePatient?: () => void | Promise<void>
     onPageChange?: (page: number) => void
@@ -136,6 +138,7 @@ const PatientList = ({
     onSelectPatient,
     onCloseDetail,
     onDetailRetry,
+    onCreateAppointment,
     onUpdatePatient,
     onArchivePatient,
     onPageChange,
@@ -329,13 +332,80 @@ const PatientList = ({
         [selectedPatient],
     )
 
+    if (selectedPatient) {
+        return (
+            <PatientDetail
+                patient={selectedPatient}
+                isLoading={isDetailLoading}
+                errorMessage={detailErrorMessage}
+                mutationState={mutationState}
+                permissions={permissions}
+                onBack={onCloseDetail}
+                onRetry={onDetailRetry}
+                onUpdate={onUpdatePatient}
+                onArchive={onArchivePatient}
+                onCreateAppointment={onCreateAppointment}
+            />
+        )
+    }
+
+    if (isDetailLoading || detailErrorMessage) {
+        return (
+            <section className="px-4 py-5 sm:px-8 sm:py-6">
+                <nav aria-label="Breadcrumb" className="mb-6 text-xs font-semibold">
+                    <button
+                        type="button"
+                        onClick={onCloseDetail}
+                        className="text-clinic-muted transition-colors hover:text-clinic-blue">
+                        Patient list
+                    </button>
+                    <span aria-hidden="true" className="mx-2 text-clinic-muted">
+                        /
+                    </span>
+                    <span className="text-clinic-blue">Patient detail</span>
+                </nav>
+                <div
+                    aria-label="Patient detail"
+                    className="mx-auto max-w-4xl animate-[fadeIn_300ms_ease-out] rounded-lg border border-clinic-line bg-white p-6 shadow-sm motion-reduce:animate-none sm:p-8">
+                    {isDetailLoading ? (
+                        <div role="status" className="space-y-5">
+                            <p className="text-sm font-semibold text-clinic-muted">
+                                Loading patient details…
+                            </p>
+                            <div className="h-16 animate-pulse rounded-md bg-clinic-canvas" />
+                            <div className="h-32 animate-pulse rounded-md bg-clinic-canvas" />
+                        </div>
+                    ) : (
+                        <div role="alert">
+                            <h1 className="text-lg font-extrabold text-clinic-ink">
+                                Patient details could not be loaded
+                            </h1>
+                            <p className="mt-2 text-sm text-clinic-muted">
+                                {detailErrorMessage}
+                            </p>
+                            <div className="mt-5 flex flex-wrap gap-2">
+                                <button
+                                    type="button"
+                                    onClick={onDetailRetry}
+                                    className="rounded-md bg-clinic-blue px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-blue-700">
+                                    Retry
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={onCloseDetail}
+                                    className="rounded-md border border-clinic-line px-4 py-2 text-sm font-bold text-clinic-muted transition-colors hover:border-clinic-blue hover:text-clinic-blue">
+                                    Back to patient list
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </section>
+        )
+    }
+
     return (
-        <section
-            className={`grid gap-5 px-8 py-5 ${
-                selectedPatient || isDetailLoading || detailErrorMessage
-                    ? 'xl:grid-cols-[minmax(0,1fr)_440px]'
-                    : 'grid-cols-1'
-            }`}>
+        <section className="grid grid-cols-1 gap-5 px-4 py-5 sm:px-8">
             <div className="min-w-0">
                 <div className="overflow-x-auto rounded-lg border border-clinic-line bg-white">
                     <table className="w-full min-w-[900px] border-collapse text-left">
