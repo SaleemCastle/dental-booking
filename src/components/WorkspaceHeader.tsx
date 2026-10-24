@@ -9,6 +9,8 @@ import {
 import { AppModule } from '../lib/permissions'
 import {
     AuthUser,
+    CurrentClinic,
+    getAuthRoleLabel,
     getAuthUserDisplayName,
     getAuthUserEmail,
 } from '../lib/auth-session'
@@ -16,45 +18,10 @@ import { formatModuleLabel } from '../utils'
 import ActionButton from './ActionButton'
 import Searchbar from './Searchbar'
 
-const getRoleLabel = (user: AuthUser | null) => {
-    if (!user) {
-        return 'Team member'
-    }
-
-    const role = user.role ?? user.roleName ?? user.role_name
-    if (typeof role === 'string') {
-        return role
-    }
-    if (role && typeof role === 'object' && 'name' in role) {
-        const name = role.name
-        if (typeof name === 'string') {
-            return name
-        }
-    }
-
-    if (Array.isArray(user.roles) && user.roles.length > 0) {
-        const firstRole = user.roles[0]
-        if (typeof firstRole === 'string') {
-            return firstRole
-        }
-        if (
-            firstRole &&
-            typeof firstRole === 'object' &&
-            'name' in firstRole
-        ) {
-            const name = firstRole.name
-            if (typeof name === 'string') {
-                return name
-            }
-        }
-    }
-
-    return 'Team member'
-}
-
 const WorkspaceHeader = ({
     currentTab,
     user,
+    currentTenant,
     patientSearch = '',
     onPatientSearchChange,
     onPatientSearchClear,
@@ -66,6 +33,7 @@ const WorkspaceHeader = ({
 }: {
     currentTab: AppModule
     user: AuthUser | null
+    currentTenant: CurrentClinic | null
     patientSearch?: string
     onPatientSearchChange: (value: string) => void
     onPatientSearchClear: () => void
@@ -131,7 +99,15 @@ const WorkspaceHeader = ({
                 </button>
             </div>
 
-            <div className="flex min-w-0 flex-1 items-center pl-5 sm:pl-6">
+            <div className="flex min-w-0 flex-1 flex-col items-start pl-5 sm:pl-6">
+                {currentTenant && (
+                    <p
+                        aria-label="Current clinic"
+                        title={currentTenant.name}
+                        className="w-full truncate text-xs text-clinic-muted">
+                        {currentTenant.name}
+                    </p>
+                )}
                 <h1 className="min-w-0 truncate text-lg font-bold text-clinic-ink capitalize">
                     {currentTab === 'user_management'
                         ? 'User & Role Management'
@@ -164,9 +140,7 @@ const WorkspaceHeader = ({
                         aria-haspopup="menu"
                         aria-label="Account menu"
                         className="flex items-center gap-2 rounded-full p-1.5 text-left transition-colors hover:bg-clinic-canvas sm:gap-3"
-                        onClick={() =>
-                            setIsAccountMenuOpen(isOpen => !isOpen)
-                        }>
+                        onClick={() => setIsAccountMenuOpen(isOpen => !isOpen)}>
                         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-clinic-sky text-xs font-bold text-clinic-blue">
                             {initials || 'A'}
                         </span>
@@ -175,7 +149,7 @@ const WorkspaceHeader = ({
                                 {displayName}
                             </span>
                             <span className="block max-w-36 truncate text-[11px] capitalize text-clinic-muted">
-                                {getRoleLabel(user)}
+                                {getAuthRoleLabel(user)}
                             </span>
                         </span>
                         <FiChevronDown className="hidden text-clinic-muted sm:block" />

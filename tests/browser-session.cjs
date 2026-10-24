@@ -35,8 +35,12 @@ exports.openBrowser = async ({ origin, apiOrigin, onRequest }) => {
             `--user-data-dir=${profile}`,
             'about:blank',
         ],
-        { windowsHide: true, stdio: 'ignore' },
+        { windowsHide: true, stdio: ['ignore', 'ignore', 'pipe'] },
     )
+    let startupError = ''
+    browser.stderr.on('data', chunk => {
+        startupError += chunk.toString()
+    })
     let socket, send
     const errors = []
     const cancelledRequests = new Set()
@@ -71,8 +75,12 @@ exports.openBrowser = async ({ origin, apiOrigin, onRequest }) => {
                 port = fs.readFileSync(portFile, 'utf8').split('\n')[0]
                 break
             }
-            if (browser.exitCode !== null)
-                throw new Error(`Browser exited with ${browser.exitCode}`)
+            // Windows browser launchers may exit successfully after starting
+            // the actual browser process; keep waiting for its debug endpoint.
+            if (browser.exitCode !== null && browser.exitCode !== 0)
+                throw new Error(
+                    `Browser exited with ${browser.exitCode}: ${startupError}`,
+                )
             await delay(100)
         }
         assert.ok(port, 'Browser did not start')
@@ -126,6 +134,7 @@ exports.openBrowser = async ({ origin, apiOrigin, onRequest }) => {
                             ? { status: 204 }
                             : await onRequest({
                                   method: request.method,
+                                  headers: request.headers,
                                   url: new URL(request.url),
                                   payload: request.postData
                                       ? JSON.parse(request.postData)

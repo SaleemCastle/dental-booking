@@ -1,8 +1,34 @@
 import type { ApiError } from './api'
 
-export type AuthSessionStatus = 'loading' | 'authenticated' | 'unauthenticated'
+export type AuthSessionStatus =
+    | 'loading'
+    | 'authenticated'
+    | 'unauthenticated'
+    | 'error'
+
+export interface CurrentClinic {
+    id: number
+    name: string
+    slug: string
+}
+
+export interface ClinicMembership extends CurrentClinic {
+    active: boolean
+}
+
+export interface AuthRole {
+    id?: number
+    tenant_id?: number
+    slug?: string
+    name?: string
+    permissions?: unknown[]
+}
 
 export interface AuthUser {
+    id?: number
+    current_tenant_id?: number
+    roles?: Array<AuthRole | string>
+    permissions?: unknown[]
     email_verified_at?: string | null
     [key: string]: unknown
 }
@@ -24,11 +50,19 @@ export const resolveSessionStatus = (
     user: AuthUser | null | undefined,
     error?: ApiError,
 ): AuthSessionStatus => {
+    // SWR can retain its last successful data after revalidation fails.
+    // Never keep using that identity or its clinic grants after an error.
+    if (error) {
+        return error.statusCode === 401 || error.statusCode === 409
+            ? 'unauthenticated'
+            : 'error'
+    }
+
     if (user) {
         return 'authenticated'
     }
 
-    if (error || user === null) {
+    if (user === null) {
         return 'unauthenticated'
     }
 
@@ -37,6 +71,40 @@ export const resolveSessionStatus = (
 
 export const canRunProtectedApi = (status: AuthSessionStatus) =>
     status === 'authenticated'
+
+// Match only the server-selected ID, never the first membership or an ID from
+// browser storage, query parameters, login responses, or a user selector.
+export const getCurrentClinic = (
+    user: AuthUser,
+    memberships: ClinicMembership[],
+): CurrentClinic | null => {
+    if (
+        !Number.isSafeInteger(user.current_tenant_id) ||
+        user.current_tenant_id <= 0
+    )
+        return null
+    const clinic = (Array.isArray(memberships) ? memberships : []).find(
+        membership =>
+            membership.id === user.current_tenant_id &&
+            membership.active === true &&
+            typeof membership.name === 'string' &&
+            membership.name.trim().length > 0 &&
+            typeof membership.slug === 'string',
+    )
+    return clinic
+        ? { id: clinic.id, name: clinic.name, slug: clinic.slug }
+        : null
+}
+
+export const getAuthRoleLabel = (user: AuthUser | null) => {
+    const role = user?.roles?.[0]
+    if (role && typeof role === 'object') {
+        if (role.slug === 'admin') return 'Clinic Admin'
+        return role.name || role.slug || 'Team member'
+    }
+    if (role === 'admin') return 'Clinic Admin'
+    return typeof role === 'string' && role ? role : 'Team member'
+}
 
 export const unwrapAuthUser = (
     payload: AuthUser | WrappedAuthUser | null,
@@ -87,7 +155,7 @@ export const getAuthRouteRedirect = ({
     user,
     errorStatusCode,
 }: AuthRouteDecisionProps) => {
-    if (status === 'loading') {
+    if (status === 'loading' || status === 'error') {
         return null
     }
 

@@ -15,6 +15,7 @@ import {
 export * from './api-contract'
 
 export const unauthorizedSessionEvent = 'api:unauthorized'
+export const forbiddenSessionEvent = 'api:forbidden'
 
 export class ApiError extends Error implements ApiErrorShape {
     statusCode: number
@@ -124,7 +125,21 @@ export const http: AxiosInstance = Axios.create({
 
 http.interceptors.response.use(
     response => response,
-    error => Promise.reject(normalizeAxiosError(error)),
+    error => {
+        const normalized = normalizeAxiosError(error)
+        // A clinic may have been deactivated or membership/grants revoked.
+        // A normal policy denial is also possible: recheck the session rather
+        // than treating every 403 as a logout. Session requests must not loop.
+        if (
+            normalized.statusCode === 403 &&
+            error.config?.url !== '/api/user' &&
+            error.config?.url !== '/api/tenants' &&
+            typeof window !== 'undefined'
+        ) {
+            window.dispatchEvent(new Event(forbiddenSessionEvent))
+        }
+        return Promise.reject(normalized)
+    },
 )
 
 const request = async <T>(

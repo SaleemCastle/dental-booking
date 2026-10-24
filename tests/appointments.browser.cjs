@@ -199,9 +199,10 @@ const run = async () => {
                 else if (url.pathname === '/api/user')
                     data = {
                         id: 90,
+                        current_tenant_id: 37,
                         name: 'Staff tester',
                         email_verified_at: today,
-                        ...(actor === 'admin' ? { roles: ['admin'] } : {}),
+                        roles: [{ slug: actor === 'admin' ? 'admin' : 'staff' }],
                         permissions:
                             actor === 'viewer'
                                 ? ['dashboard.view', 'appointments.view']
@@ -216,6 +217,8 @@ const run = async () => {
                                       'treatments.view',
                                   ],
                     }
+                else if (url.pathname === '/api/tenants')
+                    data = { tenants: [{ id: 37, name: 'Default Clinic', slug: 'default-clinic', active: true }] }
                 else if (url.pathname === '/api/appointment-locations')
                     data = { rooms }
                 else if (url.pathname === '/api/dentists')

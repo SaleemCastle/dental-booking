@@ -43,6 +43,7 @@ let records = [
     ...Array.from({ length: 24 }, (_, index) => makeRecord(278 - index)),
 ]
 const user = () => ({
+    current_tenant_id: 37,
     id: actor === 'admin' ? 90 : 91,
     name: actor === 'admin' ? 'Audit admin' : `Reader ${actor}`,
     email_verified_at: '2026-10-18',
@@ -57,6 +58,19 @@ const user = () => ({
 })
 const readAllowed = () => ['admin', 'auditor'].includes(actor)
 const onRequest = async ({ method, url }) => {
+    if (url.pathname === '/api/tenants')
+        return {
+            data: {
+                tenants: [
+                    {
+                        id: 37,
+                        name: 'Default Clinic',
+                        slug: 'default-clinic',
+                        active: true,
+                    },
+                ],
+            },
+        }
     requests.push({
         method,
         path: url.pathname,

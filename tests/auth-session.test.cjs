@@ -18,6 +18,8 @@ new Function('exports', 'module', compiled)(moduleRef.exports, moduleRef)
 const {
     canRunProtectedApi,
     getAuthUserDisplayName,
+    getAuthRoleLabel,
+    getCurrentClinic,
     getAuthUserEmail,
     getAuthRouteRedirect,
     resolveSessionStatus,
@@ -35,6 +37,57 @@ assert.equal(
 assert.equal(canRunProtectedApi('loading'), false)
 assert.equal(canRunProtectedApi('unauthenticated'), false)
 assert.equal(canRunProtectedApi('authenticated'), true)
+assert.equal(canRunProtectedApi('error'), false)
+
+for (const statusCode of [0, 403, 422, 500]) {
+    assert.equal(
+        resolveSessionStatus({ id: 7, permissions: ['*'] }, { statusCode }),
+        'error',
+    )
+    assert.equal(
+        getAuthRouteRedirect({
+            middleware: 'auth',
+            currentPath: '/',
+            status: 'error',
+            user: null,
+            errorStatusCode: statusCode,
+        }),
+        null,
+    )
+}
+assert.equal(
+    resolveSessionStatus({ id: 7 }, { statusCode: 401 }),
+    'unauthenticated',
+)
+assert.equal(
+    resolveSessionStatus({ id: 7 }, { statusCode: 409 }),
+    'unauthenticated',
+)
+const clinics = [
+    { id: 2, name: 'Other clinic', slug: 'other', active: true },
+    { id: 37, name: 'Pearl Clinic', slug: 'default-clinic', active: true },
+]
+assert.deepEqual(getCurrentClinic({ current_tenant_id: 37 }, clinics), {
+    id: 37,
+    name: 'Pearl Clinic',
+    slug: 'default-clinic',
+})
+for (const current_tenant_id of [undefined, null, 1, 0, -1, '37', 1.5])
+    assert.equal(getCurrentClinic({ current_tenant_id }, clinics), null)
+assert.equal(
+    getCurrentClinic({ current_tenant_id: 37 }, [
+        { ...clinics[1], active: false },
+    ]),
+    null,
+)
+assert.equal(getCurrentClinic({ current_tenant_id: 37 }, null), null)
+assert.equal(
+    getAuthRoleLabel({
+        roles: [{ slug: 'admin', name: 'Administrator' }],
+        role: 'Platform Super Admin',
+    }),
+    'Clinic Admin',
+)
 
 assert.deepEqual(unwrapAuthUser({ user: { id: 1, name: 'Jane Doe' } }), {
     id: 1,

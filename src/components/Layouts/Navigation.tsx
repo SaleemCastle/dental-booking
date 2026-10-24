@@ -15,7 +15,7 @@ import ResponsiveNavLink, { ResponsiveNavButton } from '../ResponsiveNavLink'
 const Navigation = ({ user }) => {
     const router = useRouter()
 
-    const { logout } = useAuth()
+    const { logout, currentTenant } = useAuth()
 
     const [open, setOpen] = useState(false)
     const [isLoggingOut, setIsLoggingOut] = useState(false)
@@ -45,6 +45,14 @@ const Navigation = ({ user }) => {
                         </div>
 
                         {/* Navigation Links */}
+                        {currentTenant && (
+                            <p
+                                aria-label="Current clinic"
+                                className="my-auto ml-4 max-w-[12rem] truncate text-sm text-gray-600"
+                                title={currentTenant.name}>
+                                {currentTenant.name}
+                            </p>
+                        )}
                         <div className="hidden space-x-8 sm:-my-px sm:ml-10 sm:flex">
                             <NavLink
                                 href="/dashboard"

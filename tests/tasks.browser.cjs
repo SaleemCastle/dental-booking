@@ -65,6 +65,7 @@ let tasks = [
     ...Array.from({ length: 13 }, (_, index) => makeTask(10 + index)),
 ]
 const user = () => ({
+    current_tenant_id: 37,
     id: 90,
     email_verified_at: today,
     roles: [
@@ -98,6 +99,19 @@ const onRequest = async ({ method, url, payload }) => {
         payload,
     })
     if (url.pathname === '/api/user') return { data: user() }
+    if (url.pathname === '/api/tenants')
+        return {
+            data: {
+                tenants: [
+                    {
+                        id: 37,
+                        name: 'Default Clinic',
+                        slug: 'default-clinic',
+                        active: true,
+                    },
+                ],
+            },
+        }
     if (url.pathname === '/api/dashboard/summary')
         return summaryFailure
             ? { status: 500, message: 'Summary unavailable.' }

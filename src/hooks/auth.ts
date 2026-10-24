@@ -1,12 +1,10 @@
 import { useCallback, useEffect } from 'react'
 import { useRouter } from 'next/router'
 import {
-    ApiError,
     ApiFieldErrors,
     apiClient,
     ensureCsrfCookie,
     normalizeAxiosError,
-    unauthorizedSessionEvent,
 } from '../lib/api'
 import { useAuthSession } from '../context/AuthSessionContext'
 import { getAuthRouteRedirect } from '../lib/auth-session'
@@ -58,6 +56,7 @@ export const useAuth = ({
     const router = useRouter()
     const {
         user,
+        currentTenant,
         error,
         status,
         isLoading,
@@ -153,7 +152,7 @@ export const useAuth = ({
     }
 
     const logout = useCallback(async () => {
-        const shouldCallBackend = isAuthenticated
+        const shouldCallBackend = status !== 'unauthenticated'
 
         await clearSession()
 
@@ -166,28 +165,7 @@ export const useAuth = ({
         }
 
         await router.push('/login')
-    }, [clearSession, isAuthenticated, router])
-
-    useEffect(() => {
-        const handleUnauthorized = (event: Event) => {
-            const apiError = (event as CustomEvent<ApiError>).detail
-
-            void clearSession()
-
-            if (middleware === 'auth' && apiError?.statusCode === 401) {
-                void router.push('/login')
-            }
-        }
-
-        window.addEventListener(unauthorizedSessionEvent, handleUnauthorized)
-
-        return () => {
-            window.removeEventListener(
-                unauthorizedSessionEvent,
-                handleUnauthorized,
-            )
-        }
-    }, [clearSession, middleware, router])
+    }, [clearSession, status, router])
 
     useEffect(() => {
         const redirectTo = getAuthRouteRedirect({
@@ -206,6 +184,7 @@ export const useAuth = ({
 
     return {
         user,
+        currentTenant,
         error,
         status,
         isLoading,

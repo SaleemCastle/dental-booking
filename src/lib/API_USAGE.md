@@ -37,6 +37,55 @@ resolution. Components should use `useAuth()` or `useAuthSession()` and check
 `status`, `isLoading`, or `isAuthenticated` before running authenticated API
 calls. Do not create another session fetcher in a component.
 
+## Clinic context (Phase 2 M0)
+
+The session resolves `GET /api/user` and then `GET /api/tenants`. Only the
+active membership matching the server's `current_tenant_id` supplies the clinic
+name. `useAuthSession()` and `useAuth()` expose `currentTenant` as the safe
+`{ id, name, slug }` identity; it is null until the complete session succeeds.
+The workspace header and sidebar display this clinic, including for members
+without module permissions. The stable `admin` slug displays as **Clinic Admin**.
+
+No tenant selector, stored tenant preference, or outgoing `X-Tenant-Id` is used.
+Requests intentionally omit tenant selection so the API chooses `default-clinic`
+and verifies active membership. Never assume the default ID is 1, pick the first
+membership, or copy an ID from a URL, browser storage, or a login response.
+Membership discovery never authorizes clinical access. The server remains the
+security boundary for every resource, relationship, role and permission grant.
+
+Tenant sessions use only `/api/user`'s flattened clinic-local permissions for
+permission navigation, including an empty array. Role-restricted features use
+canonical clinic role slugs. Account flags, display names and legacy role aliases
+do not create platform authority or fill in missing clinic permissions. Session
+refresh replaces the snapshot; grants are never merged across clinics.
+
+Session readiness has four states: `loading`, `authenticated`, `unauthenticated`,
+and `error`. Only `authenticated` may run protected requests. The shared provider
+handles 401 centrally; auth routes redirect to login (409 retains email
+verification behavior). A clinical API 403 emits `api:forbidden` and rechecks the
+session. An ordinary operation denial retains the valid session, while a session
+403 blocks the workspace with generic clinic-access guidance and retry/sign-out.
+Network, invalid-session and server failures offer retry without redirecting to
+login. Failed revalidation hides stale identity/grants even if SWR retains data.
+Focus/reconnect revalidates membership. Account-level logout remains available
+when clinic resolution fails.
+Password-reset and email-verification pages also remain available independently
+of clinic access.
+
+Account, clinic or authorization changes remount the workspace, reset its SWR
+cache, clear the Redux patient collection, and discard component selections and
+drafts. Late patient-list responses cannot repopulate the new workspace after
+unmount. Any future clinic switching must refetch this session and keep those
+reset semantics; it requires a separate feature.
+
+Validation: `npm run test:auth-session` covers the session state, membership
+matching, request contract and central 401/403 handling. `npm run test:permissions`
+covers clinic-local grants and membership-only users. Run
+`npm run test:tenant-session:browser` against a running app to verify shell labels,
+403 revocation versus policy denial, 401, failed refresh/recovery, cache clearing,
+and ignored URL/storage tenant IDs. All browser API requests are intercepted.
+Set `TENANT_SESSION_TEST_URL` and `TENANT_SESSION_TEST_API_URL` for other ports.
+
 ## User & Role Management
 
 Administrators open `/?tab=user_management` from protected navigation. Both
