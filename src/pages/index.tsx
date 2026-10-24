@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import Head from 'next/head'
 import { useRouter } from 'next/router'
@@ -62,7 +62,16 @@ const Home: NextPage = () => {
         errorMessage: '',
     })
     const dispatch = useDispatch()
-    const { status, user, logout } = useAuth({ middleware: 'auth' })
+    const { status, user, currentTenant, logout } = useAuth({
+        middleware: 'auth',
+    })
+    const mounted = useRef(true)
+    useEffect(() => {
+        mounted.current = true
+        return () => {
+            mounted.current = false
+        }
+    }, [])
     const authorizedModules = useMemo(
         () => getAuthorizedNavigationModules(user),
         [user],
@@ -106,6 +115,7 @@ const Home: NextPage = () => {
 
             try {
                 const patientsResponse = await getPatients(query)
+                if (!mounted.current) return
                 dispatch(setPatients(patientsResponse))
                 setPatientMeta(patientsResponse.meta)
             } catch (error) {
@@ -309,7 +319,7 @@ const Home: NextPage = () => {
     }, [selectedPatientId, patientDetailVersion])
 
     useEffect(() => {
-        if (!canRunProtectedApi(status)) {
+        if (!canRunProtectedApi(status) || !router.isReady) {
             return
         }
 
@@ -342,14 +352,6 @@ const Home: NextPage = () => {
         )
     }
 
-    if (!firstAuthorizedTab) {
-        return (
-            <div className="flex min-h-screen items-center justify-center bg-clinic-canvas text-sm font-bold text-clinic-muted">
-                No modules are available for your account.
-            </div>
-        )
-    }
-
     return (
         <>
             <Head>
@@ -360,6 +362,7 @@ const Home: NextPage = () => {
                 <WorkspaceHeader
                     currentTab={currentTab}
                     user={user}
+                    currentTenant={currentTenant}
                     patientSearch={patientSearch}
                     onPatientSearchChange={handlePatientSearchChange}
                     onPatientSearchClear={handlePatientSearchClear}
@@ -376,8 +379,17 @@ const Home: NextPage = () => {
                         activeTab={currentTab}
                         setActiveTab={setCurrentTab}
                         modules={authorizedModules}
+                        currentTenant={currentTenant}
                         isCollapsed={isSidebarCollapsed}
                     />
+                    {!firstAuthorizedTab && (
+                        <p
+                            role="status"
+                            className="p-8 text-sm text-clinic-muted">
+                            No modules are available for your account in this
+                            clinic.
+                        </p>
+                    )}
                     {canAccessModuleId(user, currentTab) && (
                         <MainArea
                             currentTab={currentTab}

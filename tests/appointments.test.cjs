@@ -398,7 +398,7 @@ const main = async () => {
     const adminState = hook.useAppointments('2026-10-16')
     assert.equal(adminState.canCreate, true)
     assert.equal(adminState.canUpdate, true)
-    for (const user of [{ roles: ['admin'] }, { isSuperAdmin: true }])
+    for (const user of [{ roles: ['admin'] }])
         for (const permission of [
             'appointments.create',
             'appointments.update',

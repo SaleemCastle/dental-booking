@@ -164,12 +164,7 @@ assert.equal(
     false,
 )
 
-for (const user of [
-    admin,
-    singularRole,
-    { isSuperAdmin: true },
-    { is_super_admin: true },
-]) {
+for (const user of [admin, singularRole]) {
     for (const permission of [
         'treatments.view',
         'treatments.create',
@@ -209,3 +204,50 @@ assert.equal(
 )
 
 console.log('Permission mapping tests passed.')
+
+const clinicAdmin = {
+    current_tenant_id: 37,
+    roles: [{ slug: 'admin', name: 'Clinic Admin' }],
+    permissions: ['*'],
+}
+assert.equal(canAccessModuleId(clinicAdmin, 'treatments'), true)
+assert.equal(permissions.getClinicalNotePermissions(clinicAdmin).canWrite, true)
+const memberOnly = {
+    ...clinicAdmin,
+    current_tenant_id: 42,
+    roles: [],
+    permissions: [],
+    role: 'admin',
+    abilities: ['*'],
+    can: { 'patients.view': true },
+    isSuperAdmin: true,
+    is_super_admin: true,
+}
+assert.deepEqual(getAuthorizedNavigationModules(memberOnly), [])
+assert.deepEqual(permissions.getClinicalNotePermissions(memberOnly), {
+    canView: false,
+    canWrite: false,
+})
+assert.equal(getUserPermissionSet({ ...clinicAdmin, permissions: [] }).size, 0)
+assert.equal(
+    getUserPermissionSet({ current_tenant_id: 42, isSuperAdmin: true }).size,
+    0,
+)
+assert.equal(
+    permissions.canViewAuditLogs({ ...memberOnly, permissions: ['*'] }),
+    false,
+)
+assert.equal(
+    permissions.canManageUsers({ ...memberOnly, permissions: ['*'] }),
+    false,
+)
+assert.equal(
+    permissions.getClinicalNotePermissions({
+        ...memberOnly,
+        roles: [{ name: 'admin', slug: 'receptionist' }],
+        permissions: ['*'],
+    }).canWrite,
+    false,
+)
+assert.equal(getUserPermissionSet(clinicAdmin).has('patients.update'), true)
+console.log('Clinic-local permission isolation tests passed.')

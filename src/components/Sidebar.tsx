@@ -8,6 +8,7 @@ import { MdDashboard, MdPayment } from 'react-icons/md'
 import { Transition } from '@headlessui/react'
 import { FiClipboard, FiShield } from 'react-icons/fi'
 import { AppModule, NavigationModule } from '../lib/permissions'
+import type { CurrentClinic } from '../lib/auth-session'
 
 const getIcons = (tab: Tabs, active: boolean) => {
     const iconClass = `text-lg ${
@@ -39,11 +40,13 @@ const Sidebar = ({
     setActiveTab,
     modules,
     isCollapsed,
+    currentTenant,
 }: {
     activeTab: AppModule
     setActiveTab: (tab: AppModule) => void
     modules: NavigationModule[]
     isCollapsed: boolean
+    currentTenant: CurrentClinic | null
 }) => {
     return (
         <aside
@@ -53,11 +56,13 @@ const Sidebar = ({
             <div className="min-h-0 flex-1">
                 {!isCollapsed && (
                     <div className="mx-4 mt-2 rounded-md border border-clinic-line bg-clinic-canvas p-3">
-                        <p className="text-[11px] font-semibold uppercase text-clinic-muted">
-                            Avionna Clinic
+                        <p
+                            className="truncate text-[11px] font-semibold uppercase text-clinic-muted"
+                            title={currentTenant?.name}>
+                            {currentTenant?.name ?? 'Clinic workspace'}
                         </p>
                         <p className="mt-1 text-xs text-clinic-ink">
-                            Jln Sudirman, NYC
+                            Clinic workspace
                         </p>
                     </div>
                 )}
@@ -80,7 +85,9 @@ const Sidebar = ({
                                         setActiveTab(module.id)
                                     }}
                                     href={module.href}
-                                    title={isCollapsed ? module.label : undefined}
+                                    title={
+                                        isCollapsed ? module.label : undefined
+                                    }
                                     aria-label={module.label}
                                     className={`flex flex-row items-center gap-3 rounded-md px-3 py-3 transition-colors ${
                                         isCollapsed

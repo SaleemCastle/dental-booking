@@ -238,6 +238,18 @@ const extractUserPermissions = (user: AuthUser): PermissionExtraction => {
     const permissions = new Set<Permission>()
     let hasPermissionPayload = false
 
+    // Tenant sessions use only /api/user's flattened clinic-local grants.
+    // Neither role defaults, legacy aliases nor account flags extend them.
+    if ('current_tenant_id' in user) {
+        getNamedValues(user.permissions, [
+            'slug',
+            'key',
+            'code',
+            'name',
+        ]).forEach(permission => addPermission(permissions, permission))
+        return { hasPermissionPayload: true, permissions }
+    }
+
     if ('permissions' in user) {
         hasPermissionPayload = true
         getNamedValues(user.permissions, [
@@ -345,17 +357,6 @@ export const getUserPermissionSet = (user: AuthUser | null) => {
         return permissions
     }
 
-    if (user.isSuperAdmin === true || user.is_super_admin === true) {
-        rolePermissions.admin.forEach(permission => permissions.add(permission))
-        navigationModules.forEach(module => {
-            module.permissions.forEach(permission =>
-                permissions.add(permission),
-            )
-        })
-
-        return permissions
-    }
-
     const extracted = extractUserPermissions(user)
 
     if (!extracted.hasPermissionPayload) {
@@ -391,12 +392,21 @@ export const getUserPermissionSet = (user: AuthUser | null) => {
 // grants. Provider records are unrelated to authenticated user identities.
 export const getClinicalNotePermissions = (user: AuthUser | null) => {
     if (!user) return { canView: false, canWrite: false }
-    const roles = new Set(getNamedValues(user.roles, ['name', 'slug', 'key']))
-    ;['role', 'roleName', 'role_name'].forEach(field => {
-        getNamedValues([user[field]], ['name', 'slug', 'key']).forEach(role =>
-            roles.add(role),
-        )
-    })
+    const isClinicSession = 'current_tenant_id' in user
+    const roles = new Set(
+        getNamedValues(
+            user.roles,
+            isClinicSession ? ['slug'] : ['slug', 'key', 'name'],
+        ),
+    )
+    if (!isClinicSession) {
+        ;['role', 'roleName', 'role_name'].forEach(field => {
+            getNamedValues(
+                [user[field]],
+                ['slug', 'key', 'name'],
+            ).forEach(role => roles.add(role))
+        })
+    }
     const canWrite =
         roles.has('admin') ||
         (roles.has('dentist') && !roles.has('receptionist'))

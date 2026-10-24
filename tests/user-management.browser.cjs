@@ -67,7 +67,22 @@ const session = () =>
 const onRequest = async ({ method, url, payload }) => {
     requests.push({ method, path: url.pathname, payload })
     if (url.pathname === '/api/user')
-        return actor === 'guest' ? { status: 401 } : { data: session() }
+        return actor === 'guest'
+            ? { status: 401 }
+            : { data: { ...session(), current_tenant_id: 37 } }
+    if (url.pathname === '/api/tenants')
+        return {
+            data: {
+                tenants: [
+                    {
+                        id: 37,
+                        name: 'Default Clinic',
+                        slug: 'default-clinic',
+                        active: true,
+                    },
+                ],
+            },
+        }
     if (url.pathname === '/api/dashboard/summary')
         return {
             data: {

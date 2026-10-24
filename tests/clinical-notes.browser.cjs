@@ -169,6 +169,7 @@ const run = async () => {
                 if (request.method === 'OPTIONS') status = 204
                 else if (url.pathname === '/api/user')
                     data = {
+                        current_tenant_id: 37,
                         id:
                             actor === 'dentist'
                                 ? 90
@@ -178,8 +179,8 @@ const run = async () => {
                         email_verified_at: '2026-01-01',
                         roles:
                             actor === 'mixed'
-                                ? ['dentist', 'receptionist']
-                                : [actor],
+                                ? [{ slug: 'dentist' }, { slug: 'receptionist' }]
+                                : [{ slug: actor }],
                         permissions: [
                             'patients.view',
                             ...(actor === 'reviewer' || actor === 'mixed'
@@ -187,6 +188,8 @@ const run = async () => {
                                 : []),
                         ],
                     }
+                else if (url.pathname === '/api/tenants')
+                    data = { tenants: [{ id: 37, name: 'Default Clinic', slug: 'default-clinic', active: true }] }
                 else if (url.pathname === '/api/patients')
                     data = { patients: [patient(4), patient(5)] }
                 else if (url.pathname === '/api/dashboard/summary')

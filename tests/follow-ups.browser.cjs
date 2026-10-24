@@ -53,6 +53,19 @@ const appointments = [
     dentistName: 'Alex Rivera',
 }))
 const onRequest = async ({ method, url, payload }) => {
+    if (url.pathname === '/api/tenants')
+        return {
+            data: {
+                tenants: [
+                    {
+                        id: 37,
+                        name: 'Default Clinic',
+                        slug: 'default-clinic',
+                        active: true,
+                    },
+                ],
+            },
+        }
     requests.push({
         method,
         path: url.pathname,
@@ -64,6 +77,7 @@ const onRequest = async ({ method, url, payload }) => {
             data: {
                 id: 90,
                 name: 'Staff user',
+                current_tenant_id: 37,
                 email_verified_at: '2026-10-17',
                 roles: ['staff'],
                 permissions: [
@@ -399,7 +413,12 @@ const run = async () => {
     actor = 'creator'
     await reload()
     await wait(text('Create follow-up'))
-    assert.equal(await evaluate(`${panel}.querySelector('[aria-label^="Complete follow-up"]') !== null`), false)
+    assert.equal(
+        await evaluate(
+            `${panel}.querySelector('[aria-label^="Complete follow-up"]') !== null`,
+        ),
+        false,
+    )
     actor = 'no-appointments'
     await reload()
     await click('Create follow-up')
