@@ -1,14 +1,29 @@
 import React, { ChangeEvent, useMemo, useRef, useState } from 'react'
-import { FiClipboard, FiMapPin, FiUser } from 'react-icons/fi'
+import {
+    FiActivity,
+    FiClipboard,
+    FiMapPin,
+    FiPhone,
+    FiUser,
+} from 'react-icons/fi'
 import { ApiFieldErrors, normalizeAxiosError } from '../lib/api'
 import {
+    PatientRegistrationValues,
+    buildPatientRegistrationPayload,
+    initialPatientRegistrationValues,
+    normalizePatientRegistrationErrors,
+    patientFieldMaxLengths,
+    patientRegistrationSteps as stepDefinitions,
+    requiredPatientFields as requiredFields,
+    validatePatientRegistrationStep as validateStep,
+} from '../lib/patient-registration'
+import {
     WizardFieldErrors,
-    WizardStepDefinition,
     getWizardStepForFieldError,
     hasWizardStepErrors,
     isWizardStepComplete,
 } from '../lib/wizard'
-import { createPatient, PatientPayload } from '../services/patients'
+import { createPatient } from '../services/patients'
 import InputError from './InputError'
 import WizardModal, { WizardStep } from './WizardModal'
 
@@ -18,33 +33,9 @@ interface PatientRegistrationWizardProps {
     onSuccess: () => void
 }
 
-type PatientFormValues = PatientPayload
+type PatientFormValues = PatientRegistrationValues
 
-const initialValues: PatientFormValues = {
-    firstName: '',
-    lastName: '',
-    appointments: '',
-    streetAddress: '',
-    town: '',
-    city: '',
-    sex: '',
-    notes: '',
-}
-
-const stepDefinitions: WizardStepDefinition[] = [
-    { id: 'identity', fields: ['firstName', 'lastName', 'sex'] },
-    { id: 'contact', fields: ['streetAddress', 'town', 'city'] },
-    { id: 'clinical', fields: ['appointments', 'notes'] },
-]
-
-const requiredFields = [
-    'firstName',
-    'lastName',
-    'sex',
-    'streetAddress',
-    'city',
-    'appointments',
-]
+const initialValues = initialPatientRegistrationValues
 
 const getStepRequiredFields = (stepIndex: number) =>
     requiredFields.filter(field =>
@@ -54,59 +45,53 @@ const getStepRequiredFields = (stepIndex: number) =>
 const buildSteps = (
     values: PatientFormValues,
     errors: WizardFieldErrors,
-): WizardStep[] => [
-    {
-        id: 'identity',
-        label: 'Patient identity',
-        icon: <FiUser />,
+): WizardStep[] => {
+    const labels = [
+        'Identity',
+        'Address',
+        'Emergency contact',
+        'Medical history',
+        'Visit notes',
+    ]
+    const icons = [
+        <FiUser key="identity" />,
+        <FiMapPin key="address" />,
+        <FiPhone key="emergency" />,
+        <FiActivity key="medical" />,
+        <FiClipboard key="context" />,
+    ]
+
+    return stepDefinitions.map((step, index) => ({
+        id: step.id,
+        label: labels[index],
+        icon: icons[index],
         isComplete:
-            isWizardStepComplete(
-                stepDefinitions[0],
-                values,
-                getStepRequiredFields(0),
-            ) && !hasWizardStepErrors(stepDefinitions[0], errors),
-    },
-    {
-        id: 'contact',
-        label: 'Contact details',
-        icon: <FiMapPin />,
-        isComplete:
-            isWizardStepComplete(
-                stepDefinitions[1],
-                values,
-                getStepRequiredFields(1),
-            ) && !hasWizardStepErrors(stepDefinitions[1], errors),
-    },
-    {
-        id: 'clinical',
-        label: 'Clinical context',
-        icon: <FiClipboard />,
-        isComplete:
-            isWizardStepComplete(
-                stepDefinitions[2],
-                values,
-                getStepRequiredFields(2),
-            ) && !hasWizardStepErrors(stepDefinitions[2], errors),
-    },
+            (getStepRequiredFields(index).length > 0 ||
+                step.fields.some(field => values[field].trim().length > 0)) &&
+            isWizardStepComplete(step, values, getStepRequiredFields(index)) &&
+            Object.keys(validateStep(values, index)).length === 0 &&
+            !hasWizardStepErrors(step, errors),
+    }))
+}
+
+const stepDescriptions = [
+    'Enter the patient’s name and sex as recorded in their patient record.',
+    'Enter the patient’s current residential address.',
+    'Add someone to contact in an emergency. These details are optional.',
+    'Record known allergies, current medications, and medical alerts. These details are optional.',
+    'Add the reason for the visit and any other registration notes.',
 ]
-
-const validateStep = (
-    values: PatientFormValues,
-    stepIndex: number,
-): ApiFieldErrors =>
-    getStepRequiredFields(stepIndex).reduce<ApiFieldErrors>((errors, field) => {
-        const value = values[field]
-
-        if (typeof value === 'string' && value.trim().length === 0) {
-            errors[field] = ['This field is required.']
-        }
-
-        return errors
-    }, {})
 
 const mergeErrors = (...errorSets: ApiFieldErrors[]) =>
     errorSets.reduce<ApiFieldErrors>(
-        (merged, errors) => ({ ...merged, ...errors }),
+        (merged, errors) => ({
+            ...merged,
+            ...Object.fromEntries(
+                Object.entries(errors).filter(
+                    ([, messages]) => messages.length > 0,
+                ),
+            ),
+        }),
         {},
     )
 
@@ -167,8 +152,12 @@ const PatientRegistrationWizard = ({
     ) => {
         const { name, value } = event.target
 
-        setValues(previous => ({ ...previous, [name]: value }))
-        setClientErrors(previous => ({ ...previous, [name]: [] }))
+        const nextValues = { ...values, [name]: value }
+        setValues(nextValues)
+        setClientErrors(previous => ({
+            ...previous,
+            [name]: validateStep(nextValues, currentStepIndex)[name] ?? [],
+        }))
         setServerErrors(previous => ({ ...previous, [name]: [] }))
         setSubmitError('')
     }
@@ -214,22 +203,25 @@ const PatientRegistrationWizard = ({
         setSubmitError('')
 
         try {
-            await createPatient(values)
+            await createPatient(buildPatientRegistrationPayload(values))
             onSuccess()
             closeAndReset()
         } catch (error) {
             const apiError = normalizeAxiosError(error)
+            const fieldErrors = normalizePatientRegistrationErrors(
+                apiError.errors,
+            )
             const stepIndex = getWizardStepForFieldError(
                 stepDefinitions,
-                apiError.errors,
+                fieldErrors,
             )
 
             setSubmitError(apiError.message)
-            setServerErrors(apiError.errors)
+            setServerErrors(fieldErrors)
 
             if (stepIndex >= 0) {
                 setCurrentStepIndex(stepIndex)
-                focusFirstErroredField(apiError.errors)
+                focusFirstErroredField(fieldErrors)
             }
         } finally {
             setIsSubmitting(false)
@@ -237,25 +229,77 @@ const PatientRegistrationWizard = ({
     }
 
     const inputClass =
-        'mt-2 block h-12 w-full rounded-md border-clinic-line bg-white px-3 text-sm text-clinic-ink shadow-sm focus:border-clinic-blue focus:ring-clinic-blue/20'
+        'mt-2 block w-full rounded-md border-clinic-line bg-white px-3 text-sm text-clinic-ink shadow-sm focus:border-clinic-blue focus:ring-clinic-blue/20'
 
     const renderInput = (
         field: keyof PatientFormValues,
         label: string,
         placeholder: string,
+        type: 'text' | 'tel' = 'text',
     ) => (
         <label className="block">
-            <span className="text-sm font-bold text-clinic-ink">{label}</span>
+            <span className="text-sm font-bold text-clinic-ink">
+                {label}
+                {requiredFields.includes(field) ? ' *' : ' (optional)'}
+            </span>
             <input
                 ref={setFieldRef(field)}
                 id={field}
                 name={field}
+                type={type}
                 value={values[field]}
+                required={requiredFields.includes(field)}
+                maxLength={patientFieldMaxLengths[field]}
+                aria-invalid={Boolean(errors[field]?.length)}
+                aria-describedby={
+                    errors[field]?.length ? `${field}-error` : undefined
+                }
                 placeholder={placeholder}
-                className={inputClass}
+                className={`${inputClass} h-12`}
                 onChange={updateValue}
             />
-            <InputError messages={errors[field]} className="mt-2" />
+            <div id={`${field}-error`}>
+                <InputError messages={errors[field]} className="mt-2" />
+            </div>
+        </label>
+    )
+
+    const renderTextarea = (
+        field: 'allergies' | 'medications' | 'medical_alerts' | 'notes',
+        label: string,
+        placeholder: string,
+        hint?: string,
+    ) => (
+        <label className="block">
+            <span className="text-sm font-bold text-clinic-ink">
+                {label}
+                {requiredFields.includes(field) ? ' *' : ' (optional)'}
+            </span>
+            {hint && (
+                <span
+                    id={`${field}-hint`}
+                    className="mt-1 block text-xs text-clinic-muted">
+                    {hint}
+                </span>
+            )}
+            <textarea
+                ref={setFieldRef(field)}
+                id={field}
+                name={field}
+                value={values[field]}
+                rows={field === 'notes' ? 4 : 3}
+                required={requiredFields.includes(field)}
+                aria-invalid={Boolean(errors[field]?.length)}
+                aria-describedby={`${
+                    hint ? `${field}-hint ` : ''
+                }${field}-error`}
+                className={`${inputClass} min-h-[6rem] py-3`}
+                placeholder={placeholder}
+                onChange={updateValue}
+            />
+            <div id={`${field}-error`}>
+                <InputError messages={errors[field]} className="mt-2" />
+            </div>
         </label>
     )
 
@@ -266,9 +310,11 @@ const PatientRegistrationWizard = ({
                     <div className="grid gap-5 md:grid-cols-2">
                         {renderInput('firstName', 'First name', 'Jane')}
                         {renderInput('lastName', 'Last name', 'Doe')}
-                        <fieldset className="block">
+                        <fieldset
+                            className="block md:col-span-2"
+                            aria-describedby="sex-error">
                             <legend className="text-sm font-bold text-clinic-ink">
-                                Gender
+                                Sex *
                             </legend>
                             <div className="mt-2 grid grid-cols-2 gap-3">
                                 {['Male', 'Female'].map((gender, index) => (
@@ -289,6 +335,7 @@ const PatientRegistrationWizard = ({
                                             name="sex"
                                             value={gender}
                                             checked={values.sex === gender}
+                                            required
                                             onChange={updateValue}
                                             className="h-5 w-5 border-clinic-line text-clinic-blue focus:ring-clinic-blue"
                                         />
@@ -296,10 +343,12 @@ const PatientRegistrationWizard = ({
                                     </label>
                                 ))}
                             </div>
-                            <InputError
-                                messages={errors.sex}
-                                className="mt-2"
-                            />
+                            <div id="sex-error">
+                                <InputError
+                                    messages={errors.sex}
+                                    className="mt-2"
+                                />
+                            </div>
                         </fieldset>
                     </div>
                 )
@@ -315,6 +364,50 @@ const PatientRegistrationWizard = ({
                         {renderInput('city', 'City', 'Bogota')}
                     </div>
                 )
+            case 2:
+                return (
+                    <div className="grid gap-5 md:grid-cols-2">
+                        {renderInput(
+                            'emergency_contact_name',
+                            'Contact name',
+                            'Alex Doe',
+                        )}
+                        {renderInput(
+                            'emergency_contact_phone',
+                            'Phone number',
+                            '+57 300 123 4567',
+                            'tel',
+                        )}
+                        {renderInput(
+                            'emergency_contact_relationship',
+                            'Relationship to patient',
+                            'Spouse, parent, sibling',
+                        )}
+                    </div>
+                )
+            case 3:
+                return (
+                    <div className="space-y-5">
+                        {renderTextarea(
+                            'allergies',
+                            'Allergies',
+                            'Penicillin\nLatex',
+                            'Enter one allergy per line or separate entries with commas.',
+                        )}
+                        {renderTextarea(
+                            'medications',
+                            'Current medications',
+                            'Medication name and dose',
+                            'Enter one medication per line or separate entries with commas.',
+                        )}
+                        {renderTextarea(
+                            'medical_alerts',
+                            'Medical alerts',
+                            'Diabetes\nHigh blood pressure',
+                            'Enter one medical alert per line or separate entries with commas.',
+                        )}
+                    </div>
+                )
             default:
                 return (
                     <div className="space-y-5">
@@ -323,25 +416,11 @@ const PatientRegistrationWizard = ({
                             'Appointment context',
                             'Cleaning, consultation, follow-up',
                         )}
-                        <label className="block">
-                            <span className="text-sm font-bold text-clinic-ink">
-                                Notes
-                            </span>
-                            <textarea
-                                ref={setFieldRef('notes')}
-                                id="notes"
-                                name="notes"
-                                value={values.notes}
-                                rows={6}
-                                className={inputClass}
-                                placeholder="Allergies, preferences, or scheduling notes"
-                                onChange={updateValue}
-                            />
-                            <InputError
-                                messages={errors.notes}
-                                className="mt-2"
-                            />
-                        </label>
+                        {renderTextarea(
+                            'notes',
+                            'Registration notes',
+                            'Patient preferences, scheduling needs, or other relevant notes',
+                        )}
                     </div>
                 )
         }
@@ -353,7 +432,7 @@ const PatientRegistrationWizard = ({
             title="Register patient"
             steps={steps}
             currentStepIndex={currentStepIndex}
-            infoBanner="Capture essentials first. Clinical and billing details can be expanded after the patient record exists."
+            infoBanner="Fields marked * are required. Emergency contact and medical history can be added now or later."
             isDirty={isDirty}
             isNextDisabled={!isCurrentStepValid}
             isSubmitting={isSubmitting}
@@ -365,6 +444,12 @@ const PatientRegistrationWizard = ({
             onNext={goNext}
             onSubmit={submit}>
             <div className="rounded-md border border-clinic-line bg-white p-5 shadow-sm">
+                <h3 className="text-base font-extrabold text-clinic-ink">
+                    {steps[currentStepIndex].label}
+                </h3>
+                <p className="mb-5 mt-1 text-sm text-clinic-muted">
+                    {stepDescriptions[currentStepIndex]}
+                </p>
                 {renderStep()}
             </div>
         </WizardModal>

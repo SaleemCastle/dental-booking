@@ -49,6 +49,7 @@ const WizardModal = ({
     onSubmit,
 }: WizardModalProps) => {
     const closeButtonRef = useRef<HTMLButtonElement | null>(null)
+    const currentStepRef = useRef<HTMLLIElement | null>(null)
     const isFirstStep = currentStepIndex === 0
     const isFinalStep = currentStepIndex === steps.length - 1
 
@@ -71,6 +72,15 @@ const WizardModal = ({
 
         closeButtonRef.current?.focus()
     }, [isOpen])
+
+    useEffect(() => {
+        if (isOpen) {
+            currentStepRef.current?.scrollIntoView({
+                block: 'nearest',
+                inline: 'nearest',
+            })
+        }
+    }, [isOpen, currentStepIndex])
 
     useEffect(() => {
         if (!isOpen) {
@@ -98,14 +108,11 @@ const WizardModal = ({
             <section
                 aria-labelledby="wizard-title"
                 aria-modal="true"
-                className="transition-all duration-300 ease-in-out flex max-h-[92vh] w-full max-w-xl flex-col overflow-hidden rounded-lg border border-clinic-line bg-white shadow-clinic self-start ml-auto mr-4"
+                className="transition-all duration-300 ease-in-out flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-lg border border-clinic-line bg-white shadow-clinic self-start ml-auto mr-4"
                 role="dialog">
                 <header className="shrink-0 border-b border-clinic-line bg-white px-6 py-5">
                     <div className="flex items-start justify-between gap-4 border-b border-clinic-line pb-6">
                         <div>
-                            <p className="text-xs font-bold uppercase text-clinic-muted">
-                                Data entry workflow
-                            </p>
                             <h2
                                 id="wizard-title"
                                 className="mt-1 text-xl font-extrabold text-clinic-ink">
@@ -122,7 +129,9 @@ const WizardModal = ({
                         </button>
                     </div>
 
-                    <ol className="mt-6 grid grid-cols-3">
+                    <ol
+                        className="mt-6 grid overflow-x-auto pb-2"
+                        style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(5rem, 1fr))` }}>
                         {steps.map((step, index) => {
                             const isComplete =
                                 step.isComplete || index < currentStepIndex
@@ -136,6 +145,7 @@ const WizardModal = ({
                             return (
                                 <li
                                     key={step.id}
+                                    ref={isCurrent ? currentStepRef : undefined}
                                     aria-current={isCurrent ? 'step' : undefined}
                                     className="relative flex min-w-0 flex-col items-center gap-3">
                                     {index < steps.length - 1 && (
