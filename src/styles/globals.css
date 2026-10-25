@@ -22,6 +22,10 @@ body {
     background: rgba(47, 91, 255, 0.16);
 }
 
+.dental-booking-odontogram g[aria-label$=': Uncharted'] > path:first-of-type {
+    stroke-dasharray: 3 3;
+}
+
 @keyframes fadeIn {
     from {
         opacity: 0;

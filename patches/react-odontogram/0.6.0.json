@@ -1,0 +1,141 @@
+{
+  "version": "0.6.0",
+  "files": [
+    {
+      "name": "index.mjs",
+      "beforeHash": "6456d990ffac66ec823112f09401ecfd055ebd78dea5d88f60db3e07ff27a590",
+      "afterHash": "22f122eb7dafe37e851534201fa0d43e3025d27fb043e5753d8e6e54d90fa8cb",
+      "prefix": "import odontogramExtensions from \"./dental-booking.cjs\";\n",
+      "replacements": [
+        [
+          "name:t,outlinePath:",
+          "name:t,transform:odontogramTransform,ariaLabel:odontogramAriaLabel,outlinePath:"
+        ],
+        [
+          "className:`${t} ${h?\"selected\":\"\"}`,",
+          "className:`${t} ${h?\"selected\":\"\"}`,transform:odontogramTransform,\"data-tooth\":t.replace(\"teeth-\",\"\"),"
+        ],
+        [
+          "\"aria-label\":s?void 0:`Tooth ${t.replace(\"teeth-\",\"\")}`",
+          "\"aria-label\":odontogramAriaLabel??(s?void 0:`Tooth ${t.replace(\"teeth-\",\"\")}`)"
+        ],
+        [
+          "style:{opacity:a?1:void 0}",
+          "style:{opacity:a?1:void 0,fill:a?.fillColor}"
+        ],
+        [
+          "48:32}",
+          "48:32,55:\"A\",54:\"B\",53:\"C\",52:\"D\",51:\"E\",61:\"F\",62:\"G\",63:\"H\",64:\"I\",65:\"J\",71:\"O\",72:\"N\",73:\"M\",74:\"L\",75:\"K\",81:\"P\",82:\"Q\",83:\"R\",84:\"S\",85:\"T\"}"
+        ],
+        [
+          "styles:m})=>{let C=y===\"circle\"?r1:a1,u=y===\"circle\"?s1:l1,",
+          "styles:m,dentition:odontogramDentition=\"adult\",selected:odontogramSelected,toothAriaLabel:odontogramToothAriaLabel})=>{let odontogramData=y===\"circle\"?r1:a1,odontogramQuadrants=y===\"circle\"?s1:l1,C=odontogramDentition===\"primary\"?odontogramExtensions.primaryTeeth(odontogramData,y):odontogramData,u=odontogramDentition===\"primary\"?odontogramExtensions.primaryQuadrants(odontogramQuadrants,y):odontogramQuadrants,"
+        ],
+        [
+          "[O,m1]=p1(()=>new Set(e?t.slice(0,1):t)),",
+          "[odontogramUncontrolled,m1]=p1(()=>new Set(e?t.slice(0,1):t)),O=odontogramSelected===undefined?odontogramUncontrolled:new Set(odontogramSelected),"
+        ],
+        [
+          "N=M(o=>{p||m1(l=>{let n=new Set(l);return e?n.has(o)?n.delete(o):(n.clear(),n.add(o)):n.has(o)?n.delete(o):n.add(o),r==null||r(Array.from(n).map(B)),n})},[r,p,B,e])",
+          "N=M(o=>{if(p)return;let n=new Set(O);if(e){if(n.has(o))n.delete(o);else{n.clear();n.add(o)}}else if(n.has(o))n.delete(o);else n.add(o);if(odontogramSelected===undefined)m1(n);r?.(Array.from(n).map(B))},[r,p,B,e,O,odontogramSelected])"
+        ],
+        [
+          "readOnly:p,...l,name:n,selected:O.has(n)",
+          "readOnly:p,...l,name:n,ariaLabel:odontogramToothAriaLabel?.(B(n))??`Tooth ${S}`,selected:O.has(n)"
+        ],
+        [
+          "[_,s,J,p,O,N,j,H,E,d,i.placement]",
+          "[_,s,J,p,O,N,j,H,E,d,i.placement,B,odontogramToothAriaLabel]"
+        ],
+        [
+          "viewBox:q(y,g)",
+          "viewBox:odontogramExtensions.viewBox(q(y,g),odontogramDentition,y,g)"
+        ]
+      ]
+    },
+    {
+      "name": "index.js",
+      "beforeHash": "9839182264cd21910d88b4f73dd878bd13f5238df6136fc6feb57e19afb79a03",
+      "afterHash": "278d2f109963a9938cdb8adc847bd7596f268f94d6f4e498894bc3ed3ca73d21",
+      "prefix": "\"use strict\";var odontogramExtensions = require(\"./dental-booking.cjs\");\n",
+      "replacements": [
+        [
+          "name:t,outlinePath:",
+          "name:t,transform:odontogramTransform,ariaLabel:odontogramAriaLabel,outlinePath:"
+        ],
+        [
+          "className:`${t} ${i?\"selected\":\"\"}`,",
+          "className:`${t} ${i?\"selected\":\"\"}`,transform:odontogramTransform,\"data-tooth\":t.replace(\"teeth-\",\"\"),"
+        ],
+        [
+          "\"aria-label\":h?void 0:`Tooth ${t.replace(\"teeth-\",\"\")}`",
+          "\"aria-label\":odontogramAriaLabel??(h?void 0:`Tooth ${t.replace(\"teeth-\",\"\")}`)"
+        ],
+        [
+          "style:{opacity:a?1:void 0}",
+          "style:{opacity:a?1:void 0,fill:a?.fillColor}"
+        ],
+        [
+          "48:32}",
+          "48:32,55:\"A\",54:\"B\",53:\"C\",52:\"D\",51:\"E\",61:\"F\",62:\"G\",63:\"H\",64:\"I\",65:\"J\",71:\"O\",72:\"N\",73:\"M\",74:\"L\",75:\"K\",81:\"P\",82:\"Q\",83:\"R\",84:\"S\",85:\"T\"}"
+        ],
+        [
+          "styles:C})=>{let d=P===\"circle\"?a1:n1,f=P===\"circle\"?p1:s1,",
+          "styles:C,dentition:odontogramDentition=\"adult\",selected:odontogramSelected,toothAriaLabel:odontogramToothAriaLabel})=>{let odontogramData=P===\"circle\"?a1:n1,odontogramQuadrants=P===\"circle\"?p1:s1,d=odontogramDentition===\"primary\"?odontogramExtensions.primaryTeeth(odontogramData,P):odontogramData,f=odontogramDentition===\"primary\"?odontogramExtensions.primaryQuadrants(odontogramQuadrants,P):odontogramQuadrants,"
+        ],
+        [
+          "[E,C1]=(0,l.useState)(()=>new Set(e?t.slice(0,1):t)),",
+          "[odontogramUncontrolled,C1]=(0,l.useState)(()=>new Set(e?t.slice(0,1):t)),E=odontogramSelected===undefined?odontogramUncontrolled:new Set(odontogramSelected),"
+        ],
+        [
+          "I=(0,l.useCallback)(r=>{m||C1(c=>{let n=new Set(c);return e?n.has(r)?n.delete(r):(n.clear(),n.add(r)):n.has(r)?n.delete(r):n.add(r),o==null||o(Array.from(n).map(D)),n})},[o,m,D,e])",
+          "I=(0,l.useCallback)(r=>{if(m)return;let n=new Set(E);if(e){if(n.has(r))n.delete(r);else{n.clear();n.add(r)}}else if(n.has(r))n.delete(r);else n.add(r);if(odontogramSelected===undefined)C1(n);o?.(Array.from(n).map(D))},[o,m,D,e,E,odontogramSelected])"
+        ],
+        [
+          "readOnly:m,...c,name:n,selected:E.has(n)",
+          "readOnly:m,...c,name:n,ariaLabel:odontogramToothAriaLabel?.(D(n))??`Tooth ${O}`,selected:E.has(n)"
+        ],
+        [
+          "[J,h,K,m,E,I,_,q,A,u,p.placement]",
+          "[J,h,K,m,E,I,_,q,A,u,p.placement,D,odontogramToothAriaLabel]"
+        ],
+        [
+          "viewBox:H(P,x)",
+          "viewBox:odontogramExtensions.viewBox(H(P,x),odontogramDentition,P,x)"
+        ]
+      ]
+    },
+    {
+      "name": "index.d.ts",
+      "beforeHash": "8c0c1bd81e7bfdbc765b2df5e56430a7449a6e26d9f1559fc693614114a1a3f0",
+      "afterHash": "00c0208d50ae7c30335e1bd66779bda2f696604ff42adc9ee3fe4832db3e824a",
+      "prefix": "",
+      "replacements": [
+        [
+          "    defaultSelected?: string[];",
+          "    defaultSelected?: string[];\n    selected?: string[];\n    dentition?: \"adult\" | \"primary\";\n    toothAriaLabel?: (tooth: ToothDetail) => string;"
+        ],
+        [
+          "    outlinePath: string;",
+          "    outlinePath: string;\n    transform?: string;\n    ariaLabel?: string;"
+        ]
+      ]
+    },
+    {
+      "name": "index.d.mts",
+      "beforeHash": "8c0c1bd81e7bfdbc765b2df5e56430a7449a6e26d9f1559fc693614114a1a3f0",
+      "afterHash": "00c0208d50ae7c30335e1bd66779bda2f696604ff42adc9ee3fe4832db3e824a",
+      "prefix": "",
+      "replacements": [
+        [
+          "    defaultSelected?: string[];",
+          "    defaultSelected?: string[];\n    selected?: string[];\n    dentition?: \"adult\" | \"primary\";\n    toothAriaLabel?: (tooth: ToothDetail) => string;"
+        ],
+        [
+          "    outlinePath: string;",
+          "    outlinePath: string;\n    transform?: string;\n    ariaLabel?: string;"
+        ]
+      ]
+    }
+  ]
+}

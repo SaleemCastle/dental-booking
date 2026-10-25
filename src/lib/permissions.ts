@@ -11,6 +11,8 @@ export type Permission =
     | 'patients.update'
     | 'patients.archive'
     | 'patients.medical.update'
+    | 'dental_charts.view'
+    | 'dental_charts.create'
     | 'clinical_notes.view'
     | 'tasks.view'
     | 'tasks.create'
@@ -370,6 +372,8 @@ export const getUserPermissionSet = (user: AuthUser | null) => {
     const knownPermissions = new Set<Permission>([
         ...Object.values(rolePermissions).flat(),
         'clinical_notes.view',
+        'dental_charts.view',
+        'dental_charts.create',
     ])
     knownPermissions.forEach(permission => {
         if (
@@ -420,6 +424,34 @@ export const getClinicalNotePermissions = (user: AuthUser | null) => {
             '*',
         ].some(permission => permissions.has(permission))
     return { canView, canWrite }
+}
+
+export const getDentalChartPermissions = (user: AuthUser | null) => {
+    if (!user) return { canView: false, canWrite: false }
+    const isClinicSession = 'current_tenant_id' in user
+    const roles = new Set(
+        getNamedValues(
+            user.roles,
+            isClinicSession ? ['slug'] : ['slug', 'key', 'name'],
+        ),
+    )
+    if (!isClinicSession) {
+        ;['role', 'roleName', 'role_name'].forEach(field => {
+            getNamedValues(
+                [user[field]],
+                ['slug', 'key', 'name'],
+            ).forEach(role => roles.add(role))
+        })
+    }
+    return {
+        canView:
+            roles.has('admin') ||
+            roles.has('dentist') ||
+            getUserPermissionSet(user).has('dental_charts.view'),
+        canWrite:
+            roles.has('admin') ||
+            (roles.has('dentist') && !roles.has('receptionist')),
+    }
 }
 
 // Only the role slugs returned by /api/user grant audit access. Display names,
