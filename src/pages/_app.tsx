@@ -1,5 +1,6 @@
 import React from 'react'
 import 'tailwindcss/tailwind.css'
+import 'react-odontogram/style.css'
 import '../styles/globals.css'
 import type { AppProps } from 'next/app'
 import { wrapper } from '../store/store'

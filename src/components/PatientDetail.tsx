@@ -3,6 +3,7 @@ import { FiArrowLeft, FiCalendar } from 'react-icons/fi'
 import { formatDate } from '../utils'
 import { PatientPayload } from '../services/patients'
 import PatientClinicalNotes from './PatientClinicalNotes'
+import PatientDentalChart from './PatientDentalChart'
 import PatientFollowUps from './PatientFollowUps'
 import { isArchivedPatient } from './PatientRowDetails'
 
@@ -142,13 +143,9 @@ const PatientDetail = ({
     onArchive,
     onCreateAppointment,
 }: PatientDetailProps) => {
-    const [activeTab, setActiveTab] = useState<DetailTab>(
-        'Patient Information',
-    )
+    const [activeTab, setActiveTab] = useState<DetailTab>('Patient Information')
     const [isEditing, setIsEditing] = useState(false)
-    const [editValues, setEditValues] = useState<PatientEditValues | null>(
-        null,
-    )
+    const [editValues, setEditValues] = useState<PatientEditValues | null>(null)
     const archived = isArchivedPatient(patient)
     const canSubmitEdit =
         permissions.canEdit && !mutationState.isSaving && !isLoading
@@ -260,11 +257,7 @@ const PatientDetail = ({
     }
 
     const archivePatient = async () => {
-        if (
-            !permissions.canArchive ||
-            archived ||
-            mutationState.isArchiving
-        ) {
+        if (!permissions.canArchive || archived || mutationState.isArchiving) {
             return
         }
 
@@ -390,7 +383,9 @@ const PatientDetail = ({
                             key={tab}
                             type="button"
                             role="tab"
-                            id={`patient-tab-${tab.replace(/\s+/g, '-').toLowerCase()}`}
+                            id={`patient-tab-${tab
+                                .replace(/\s+/g, '-')
+                                .toLowerCase()}`}
                             aria-selected={activeTab === tab}
                             aria-controls="patient-detail-panel"
                             onClick={() => setActiveTab(tab)}
@@ -429,7 +424,9 @@ const PatientDetail = ({
                                                 type="button"
                                                 disabled={isLoading}
                                                 onClick={() =>
-                                                    setIsEditing(value => !value)
+                                                    setIsEditing(
+                                                        value => !value,
+                                                    )
                                                 }
                                                 className="rounded-md border border-clinic-line px-3 py-2 text-sm font-bold text-clinic-muted transition-colors hover:border-clinic-blue hover:text-clinic-blue disabled:opacity-50">
                                                 {isEditing
@@ -674,37 +671,15 @@ const PatientDetail = ({
                     )}
 
                     {activeTab === 'Medical Record' && (
-                        <div className="grid gap-5 xl:grid-cols-[minmax(280px,0.8fr)_minmax(0,1.2fr)]">
-                            <section className="min-h-[360px] rounded-lg border border-clinic-line bg-white p-5 shadow-sm sm:p-6">
-                                <div className="flex items-center justify-between gap-3">
-                                    <div>
-                                        <p className="text-xs font-bold uppercase tracking-wide text-clinic-muted">
-                                            Service
-                                        </p>
-                                        <h2 className="mt-1 text-base font-extrabold text-clinic-ink">
-                                            Odontogram
-                                        </h2>
-                                    </div>
-                                    <span className="rounded-full bg-clinic-sky px-3 py-1 text-xs font-bold text-clinic-blue">
-                                        Coming soon
-                                    </span>
-                                </div>
-                                <div className="mt-6 flex min-h-[250px] flex-col items-center justify-center rounded-md border border-dashed border-clinic-line bg-clinic-canvas/60 px-5 text-center">
-                                    <div
-                                        aria-hidden="true"
-                                        className="mb-4 grid h-14 w-14 place-items-center rounded-full bg-white text-2xl text-clinic-blue shadow-sm">
-                                        +
-                                    </div>
-                                    <p className="text-sm font-bold text-clinic-ink">
-                                        Odontogram feature is in progress
-                                    </p>
-                                    <p className="mt-2 max-w-xs text-xs leading-5 text-clinic-muted">
-                                        Tooth charting and treatment mapping
-                                        will be available in an upcoming
-                                        feature.
-                                    </p>
-                                </div>
-                            </section>
+                        <div className="space-y-5">
+                            {!isLoading && !errorMessage && (
+                                <section className="min-w-0 rounded-lg border border-clinic-line bg-white p-5 shadow-sm sm:p-6">
+                                    <PatientDentalChart
+                                        key={`dental-chart-${patient.id}`}
+                                        patient={patient}
+                                    />
+                                </section>
+                            )}
                             <div className="min-w-0">
                                 <PatientClinicalNotes
                                     key={patient.id}
