@@ -123,6 +123,7 @@ const DentalOdontogram = ({
     teeth,
     selected,
     onSelect,
+    selectionOnly = false,
 }: {
     metadata: DentalChartMetadata
     dentition: Dentition
@@ -130,6 +131,7 @@ const DentalOdontogram = ({
     teeth: DentalTooth[]
     selected?: string
     onSelect: (id: string) => void
+    selectionOnly?: boolean
 }) => {
     const positions = metadata.dentitions[dentition]
     const arches = dentalArches(positions)
@@ -138,6 +140,7 @@ const DentalOdontogram = ({
             position => position.fdi === detail.notations.fdi,
         )
         if (!position) return 'Unknown tooth'
+        if (selectionOnly) return 'Tooth ' + toothLabel(position, numbering)
         return (
             'Tooth ' +
             toothLabel(position, numbering) +
@@ -237,14 +240,16 @@ const DentalOdontogram = ({
                                     <p className="whitespace-pre-wrap break-words">
                                         {describe(detail)}
                                     </p>
-                                    <DentalToothGlyph
-                                        id={detail.notations.fdi}
-                                        state={teeth.find(
-                                            tooth =>
-                                                tooth.tooth ===
-                                                detail.notations.fdi,
-                                        )}
-                                    />
+                                    {!selectionOnly && (
+                                        <DentalToothGlyph
+                                            id={detail.notations.fdi}
+                                            state={teeth.find(
+                                                tooth =>
+                                                    tooth.tooth ===
+                                                    detail.notations.fdi,
+                                            )}
+                                        />
+                                    )}
                                 </div>
                             ) : null,
                     }}
@@ -258,8 +263,9 @@ const DentalOdontogram = ({
                 />
             </div>
             <p className="text-center text-xs text-clinic-muted">
-                Dashed outlines are uncharted. Select a tooth to inspect its
-                status, findings and individual surfaces.
+                {selectionOnly
+                    ? 'Select a tooth for this planned procedure.'
+                    : 'Dashed outlines are uncharted. Select a tooth to inspect its status, findings and individual surfaces.'}
             </p>
         </div>
     )

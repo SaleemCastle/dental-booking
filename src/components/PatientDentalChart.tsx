@@ -1,9 +1,14 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { FiCheck, FiClock, FiRefreshCw } from 'react-icons/fi'
 import useSWR from 'swr'
 import { useAuthSession } from '../context/AuthSessionContext'
 import { ApiError } from '../lib/api'
-import { getDentalChartPermissions } from '../lib/permissions'
+import {
+    getDentalChartPermissions,
+    getTreatmentPlanPermissions,
+} from '../lib/permissions'
+import type { TreatmentToothContext } from '../services/treatment-plans'
+import { planningContextLabel } from '../lib/treatment-plans'
 import { describeDentalTooth, toothLabel } from '../lib/dental-charts'
 import { formatNoteDate } from '../lib/clinical-notes'
 import {
@@ -70,10 +75,7 @@ const DentalFindingTimeline = ({
                         {selectedTooth
                             ? `Findings for tooth ${
                                   selectedPosition
-                                      ? toothLabel(
-                                            selectedPosition,
-                                            numbering,
-                                        )
+                                      ? toothLabel(selectedPosition, numbering)
                                       : selectedTooth
                               }`
                             : 'Recorded findings in this chart'}
@@ -92,7 +94,9 @@ const DentalFindingTimeline = ({
                 <ol className="relative mt-5 space-y-3 before:absolute before:bottom-5 before:left-[9px] before:top-5 before:w-px before:bg-slate-200">
                     {visibleFindings.map(({ tooth, finding }, index) => (
                         <li
-                            key={`${tooth.tooth}-${finding.code}-${finding.surfaces.join('-')}-${index}`}
+                            key={`${tooth.tooth}-${
+                                finding.code
+                            }-${finding.surfaces.join('-')}-${index}`}
                             className="relative pl-8">
                             <span
                                 aria-hidden="true"
@@ -136,7 +140,9 @@ const DentalFindingTimeline = ({
                                             </h4>
                                             <p className="mt-1 text-xs text-clinic-muted">
                                                 {finding.surfaces.length
-                                                    ? `Surfaces: ${finding.surfaces.join(', ')}`
+                                                    ? `Surfaces: ${finding.surfaces.join(
+                                                          ', ',
+                                                      )}`
                                                     : 'Whole tooth'}
                                             </p>
                                         </div>
@@ -208,9 +214,20 @@ const DentalFindingTimeline = ({
     )
 }
 
-const PatientDentalChart = ({ patient }: { patient: Patient }) => {
+const PatientDentalChart = ({
+    patient,
+    onPlanTooth,
+    focusContext,
+}: {
+    patient: Patient
+    onPlanTooth?: (context: TreatmentToothContext) => void
+    focusContext?: { context: TreatmentToothContext; requestId: number } | null
+}) => {
     const { user, status } = useAuthSession()
     const access = getDentalChartPermissions(
+        status === 'authenticated' ? user : null,
+    )
+    const planningAccess = getTreatmentPlanPermissions(
         status === 'authenticated' ? user : null,
     )
     const [dentition, setDentition] = useState<Dentition>('adult')
@@ -219,6 +236,12 @@ const PatientDentalChart = ({ patient }: { patient: Patient }) => {
     const [editing, setEditing] = useState<DentalChart | null>(null)
     const [showHistory, setShowHistory] = useState(false)
     const [notice, setNotice] = useState('')
+    useEffect(() => {
+        if (focusContext) {
+            setDentition(focusContext.context.dentition)
+            setSelected(focusContext.context.tooth)
+        }
+    }, [focusContext])
     const metadata = useSWR(
         access.canView ? ['dental-chart-metadata', user] : null,
         () => getDentalChartMetadata(),
@@ -239,9 +262,7 @@ const PatientDentalChart = ({ patient }: { patient: Patient }) => {
     )
     const tooth = chart.data?.teeth.find(item => item.tooth === selected)
     return (
-        <section
-            aria-label="Patient dental chart"
-            className="space-y-5">
+        <section aria-label="Patient dental chart" className="space-y-5">
             <div className="flex flex-wrap items-center justify-between gap-4">
                 <div className="flex flex-wrap items-center gap-3">
                     <span className="text-sm font-bold text-clinic-ink">
@@ -401,9 +422,7 @@ const PatientDentalChart = ({ patient }: { patient: Patient }) => {
                                                 <option value="universal">
                                                     Universal
                                                 </option>
-                                                <option value="fdi">
-                                                    FDI
-                                                </option>
+                                                <option value="fdi">FDI</option>
                                             </select>
                                         </div>
                                     </div>
@@ -445,6 +464,39 @@ const PatientDentalChart = ({ patient }: { patient: Patient }) => {
                                             </p>
                                         </div>
                                     )}
+                                    {position &&
+                                        focusContext?.context.dentition ===
+                                            dentition &&
+                                        focusContext.context.tooth ===
+                                            selected && (
+                                            <p
+                                                role="status"
+                                                className="mt-3 rounded border border-clinic-line bg-clinic-sky p-3 text-sm">
+                                                Planning context:{' '}
+                                                {planningContextLabel(
+                                                    focusContext.context,
+                                                    metadata.data,
+                                                )}
+                                            </p>
+                                        )}
+                                    {position &&
+                                        onPlanTooth &&
+                                        planningAccess.canWrite &&
+                                        !archived && (
+                                            <button
+                                                type="button"
+                                                className={`${buttonClass} mt-3`}
+                                                onClick={() =>
+                                                    onPlanTooth({
+                                                        dentition,
+                                                        numbering_system: 'fdi',
+                                                        tooth: position.fdi,
+                                                        surfaces: [],
+                                                    })
+                                                }>
+                                                Plan treatment for this tooth
+                                            </button>
+                                        )}
                                 </section>
                                 <DentalFindingTimeline
                                     chart={chart.data}

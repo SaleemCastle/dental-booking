@@ -2,8 +2,7 @@ import React, { ChangeEvent, useEffect, useMemo, useState } from 'react'
 import { FiArrowLeft, FiCalendar } from 'react-icons/fi'
 import { formatDate } from '../utils'
 import { PatientPayload } from '../services/patients'
-import PatientClinicalNotes from './PatientClinicalNotes'
-import PatientDentalChart from './PatientDentalChart'
+import PatientClinicalWorkspace from './PatientClinicalWorkspace'
 import PatientFollowUps from './PatientFollowUps'
 import { isArchivedPatient } from './PatientRowDetails'
 
@@ -673,19 +672,11 @@ const PatientDetail = ({
                     {activeTab === 'Medical Record' && (
                         <div className="space-y-5">
                             {!isLoading && !errorMessage && (
-                                <section className="min-w-0 rounded-lg border border-clinic-line bg-white p-5 shadow-sm sm:p-6">
-                                    <PatientDentalChart
-                                        key={`dental-chart-${patient.id}`}
-                                        patient={patient}
-                                    />
-                                </section>
-                            )}
-                            <div className="min-w-0">
-                                <PatientClinicalNotes
+                                <PatientClinicalWorkspace
                                     key={patient.id}
                                     patient={patient}
                                 />
-                            </div>
+                            )}
                         </div>
                     )}
                 </div>
