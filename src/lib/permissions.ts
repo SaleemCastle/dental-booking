@@ -13,6 +13,9 @@ export type Permission =
     | 'patients.medical.update'
     | 'dental_charts.view'
     | 'dental_charts.create'
+    | 'treatment_plans.view'
+    | 'treatment_plans.create'
+    | 'treatment_plans.update'
     | 'clinical_notes.view'
     | 'tasks.view'
     | 'tasks.create'
@@ -374,6 +377,9 @@ export const getUserPermissionSet = (user: AuthUser | null) => {
         'clinical_notes.view',
         'dental_charts.view',
         'dental_charts.create',
+        'treatment_plans.view',
+        'treatment_plans.create',
+        'treatment_plans.update',
     ])
     knownPermissions.forEach(permission => {
         if (
@@ -426,7 +432,10 @@ export const getClinicalNotePermissions = (user: AuthUser | null) => {
     return { canView, canWrite }
 }
 
-export const getDentalChartPermissions = (user: AuthUser | null) => {
+const getClinicalResourcePermissions = (
+    user: AuthUser | null,
+    resource: 'dental_charts' | 'treatment_plans',
+) => {
     if (!user) return { canView: false, canWrite: false }
     const isClinicSession = 'current_tenant_id' in user
     const roles = new Set(
@@ -447,12 +456,17 @@ export const getDentalChartPermissions = (user: AuthUser | null) => {
         canView:
             roles.has('admin') ||
             roles.has('dentist') ||
-            getUserPermissionSet(user).has('dental_charts.view'),
+            getUserPermissionSet(user).has(`${resource}.view`),
         canWrite:
             roles.has('admin') ||
             (roles.has('dentist') && !roles.has('receptionist')),
     }
 }
+
+export const getDentalChartPermissions = (user: AuthUser | null) =>
+    getClinicalResourcePermissions(user, 'dental_charts')
+export const getTreatmentPlanPermissions = (user: AuthUser | null) =>
+    getClinicalResourcePermissions(user, 'treatment_plans')
 
 // Only the role slugs returned by /api/user grant audit access. Display names,
 // legacy role aliases, permission wildcards, and super-admin flags do not.

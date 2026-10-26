@@ -218,7 +218,10 @@ async function run() {
                 data = {
                     patient: patient(Number(url.pathname.split('/').pop())),
                 }
-            else if (url.pathname === '/api/dental-chart/metadata')
+            else if (/\/treatment-plans$/.test(url.pathname)) {
+                data = []
+                meta = { pagination: { lastPage: 1 } }
+            } else if (url.pathname === '/api/dental-chart/metadata')
                 data = metadata
             else if (url.pathname === '/api/dentists') {
                 data = { dentists: [{ id: 21, name: 'Alex Rivera' }] }
