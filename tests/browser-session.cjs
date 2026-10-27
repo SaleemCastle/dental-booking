@@ -136,9 +136,16 @@ exports.openBrowser = async ({ origin, apiOrigin, onRequest }) => {
                                   method: request.method,
                                   headers: request.headers,
                                   url: new URL(request.url),
-                                  payload: request.postData
-                                      ? JSON.parse(request.postData)
-                                      : undefined,
+                                  payload:
+                                      request.postData &&
+                                      /application\/json/i.test(
+                                          request.headers['Content-Type'] ??
+                                              request.headers['content-type'] ??
+                                              '',
+                                      )
+                                          ? JSON.parse(request.postData)
+                                          : undefined,
+                                  rawPostData: request.postData,
                               })
                     const {
                         status = 200,
@@ -152,7 +159,10 @@ exports.openBrowser = async ({ origin, apiOrigin, onRequest }) => {
                         requestId,
                         responseCode: status,
                         responseHeaders: [
-                            { name: 'Content-Type', value: 'application/json' },
+                            {
+                                name: 'Content-Type',
+                                value: result.contentType ?? 'application/json',
+                            },
                             {
                                 name: 'Access-Control-Allow-Origin',
                                 value: origin,
@@ -164,7 +174,7 @@ exports.openBrowser = async ({ origin, apiOrigin, onRequest }) => {
                             {
                                 name: 'Access-Control-Allow-Headers',
                                 value:
-                                    'Content-Type, X-Requested-With, X-XSRF-TOKEN, Accept',
+                                    'Content-Type, X-Requested-With, X-XSRF-TOKEN, Accept, X-Tenant-Id',
                             },
                             {
                                 name: 'Access-Control-Allow-Methods',
@@ -174,7 +184,8 @@ exports.openBrowser = async ({ origin, apiOrigin, onRequest }) => {
                         body:
                             status === 204
                                 ? ''
-                                : Buffer.from(
+                                : result.bodyBase64 ??
+                                  Buffer.from(
                                       JSON.stringify({
                                           success: status < 400,
                                           statusCode: status,

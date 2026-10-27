@@ -3,6 +3,7 @@ import type { TreatmentToothContext } from '../services/treatment-plans'
 import PatientDentalChart from './PatientDentalChart'
 import PatientTreatmentPlans from './PatientTreatmentPlans'
 import PatientClinicalNotes from './PatientClinicalNotes'
+import PatientDocuments from './PatientDocuments'
 
 const PatientClinicalWorkspace = ({ patient }: { patient: Patient }) => {
     const [context, setContext] = useState<TreatmentToothContext | null>(null)
@@ -14,6 +15,7 @@ const PatientClinicalWorkspace = ({ patient }: { patient: Patient }) => {
     const planning = useRef<HTMLDivElement>(null)
     return (
         <div className="space-y-5">
+            <PatientDocuments patient={patient} />
             <div
                 ref={chart}
                 className="min-w-0 rounded-lg border border-clinic-line bg-white p-5 shadow-sm sm:p-6">

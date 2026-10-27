@@ -17,6 +17,10 @@ export type Permission =
     | 'treatment_plans.create'
     | 'treatment_plans.update'
     | 'clinical_notes.view'
+    | 'patient_documents.view'
+    | 'patient_documents.create'
+    | 'patient_documents.archive'
+    | 'patient_documents.delete'
     | 'tasks.view'
     | 'tasks.create'
     | 'tasks.update'
@@ -376,6 +380,10 @@ export const getUserPermissionSet = (user: AuthUser | null) => {
         ...Object.values(rolePermissions).flat(),
         'clinical_notes.view',
         'dental_charts.view',
+        'patient_documents.view',
+        'patient_documents.create',
+        'patient_documents.archive',
+        'patient_documents.delete',
         'dental_charts.create',
         'treatment_plans.view',
         'treatment_plans.create',
@@ -434,7 +442,7 @@ export const getClinicalNotePermissions = (user: AuthUser | null) => {
 
 const getClinicalResourcePermissions = (
     user: AuthUser | null,
-    resource: 'dental_charts' | 'treatment_plans',
+    resource: 'dental_charts' | 'treatment_plans' | 'patient_documents',
 ) => {
     if (!user) return { canView: false, canWrite: false }
     const isClinicSession = 'current_tenant_id' in user
@@ -467,6 +475,8 @@ export const getDentalChartPermissions = (user: AuthUser | null) =>
     getClinicalResourcePermissions(user, 'dental_charts')
 export const getTreatmentPlanPermissions = (user: AuthUser | null) =>
     getClinicalResourcePermissions(user, 'treatment_plans')
+export const getPatientDocumentPermissions = (user: AuthUser | null) =>
+    getClinicalResourcePermissions(user, 'patient_documents')
 
 // Only the role slugs returned by /api/user grant audit access. Display names,
 // legacy role aliases, permission wildcards, and super-admin flags do not.

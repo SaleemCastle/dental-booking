@@ -624,16 +624,24 @@ const PatientDetail = ({
 
                             <section className="rounded-lg border border-clinic-line bg-white p-5 shadow-sm sm:p-6">
                                 <h2 className="border-l-2 border-clinic-blue pl-3 text-sm font-extrabold uppercase text-clinic-ink">
-                                    Attachments
+                                    Documents &amp; imaging
                                 </h2>
                                 <div className="mt-5 rounded-md border border-dashed border-clinic-line bg-clinic-canvas/60 px-5 py-8 text-center">
                                     <p className="text-sm font-semibold text-clinic-ink">
-                                        No attachments available
+                                        Patient files and clinical images
                                     </p>
                                     <p className="mt-1 text-xs text-clinic-muted">
-                                        Patient files and images will appear
-                                        here when available.
+                                        Review and manage documents in the
+                                        medical record.
                                     </p>
+                                    <button
+                                        type="button"
+                                        className="mt-4 rounded-md border border-clinic-line bg-white px-3 py-2 text-sm font-bold text-clinic-blue hover:bg-clinic-sky"
+                                        onClick={() =>
+                                            setActiveTab('Medical Record')
+                                        }>
+                                        Open documents &amp; imaging
+                                    </button>
                                 </div>
                             </section>
                         </div>
