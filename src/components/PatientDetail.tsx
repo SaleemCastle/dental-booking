@@ -4,6 +4,9 @@ import { formatDate } from '../utils'
 import { PatientPayload } from '../services/patients'
 import PatientClinicalWorkspace from './PatientClinicalWorkspace'
 import PatientFollowUps from './PatientFollowUps'
+import BillingWorkspace from './BillingWorkspace'
+import { useAuthSession } from '../context/AuthSessionContext'
+import { getBillingPermissions } from '../lib/permissions'
 import { isArchivedPatient } from './PatientRowDetails'
 
 interface PatientDetailProps {
@@ -50,6 +53,7 @@ type DetailTab =
     | 'Appointment History'
     | 'Next Treatment'
     | 'Medical Record'
+    | 'Billing'
 
 const detailTabs: DetailTab[] = [
     'Patient Information',
@@ -142,6 +146,9 @@ const PatientDetail = ({
     onArchive,
     onCreateAppointment,
 }: PatientDetailProps) => {
+    const { user } = useAuthSession()
+    const billingAccess = getBillingPermissions(user)
+    const visibleTabs = Object.values(billingAccess).some(Boolean) ? [...detailTabs, 'Billing' as DetailTab] : detailTabs
     const [activeTab, setActiveTab] = useState<DetailTab>('Patient Information')
     const [isEditing, setIsEditing] = useState(false)
     const [editValues, setEditValues] = useState<PatientEditValues | null>(null)
@@ -377,7 +384,7 @@ const PatientDetail = ({
                     role="tablist"
                     aria-label="Patient detail sections"
                     className="mt-5 flex overflow-x-auto border-b border-clinic-line">
-                    {detailTabs.map(tab => (
+                    {visibleTabs.map(tab => (
                         <button
                             key={tab}
                             type="button"
@@ -677,6 +684,9 @@ const PatientDetail = ({
                         />
                     )}
 
+                    {activeTab === 'Billing' && !isLoading && !errorMessage && (
+                        <BillingWorkspace key={`billing-${patient.id}`} patient={patient} />
+                    )}
                     {activeTab === 'Medical Record' && (
                         <div className="space-y-5">
                             {!isLoading && !errorMessage && (

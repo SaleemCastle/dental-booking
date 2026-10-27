@@ -6,6 +6,7 @@ import TreatmentCatalog from './TreatmentCatalog'
 import AppointmentSchedule from './AppointmentSchedule'
 import AuditLogViewer from './AuditLogViewer'
 import UserRoleManagement from './UserRoleManagement'
+import BillingWorkspace from './BillingWorkspace'
 import { PatientArchivedFilter, PatientPayload } from '../services/patients'
 
 const MainArea = ({
@@ -76,6 +77,8 @@ const MainArea = ({
                 return <AuditLogViewer />
             case 'user_management':
                 return <UserRoleManagement />
+            case 'payment_information':
+                return <BillingWorkspace />
             case 'patient_list':
                 return (
                     <PatientList
@@ -123,6 +126,7 @@ const MainArea = ({
                 'calendar',
                 'audit_logs',
                 'user_management',
+                'payment_information',
                 ].includes(currentTab) && (
                     <CurrentTabDetail
                         currentTab={currentTab}

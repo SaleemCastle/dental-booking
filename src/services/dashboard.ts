@@ -13,6 +13,13 @@ export interface DashboardMetric {
     value: string
     detail: string
     tone: DashboardTone
+    currencyValues?: Array<{ currency: string; value: string }>
+}
+
+export interface BillingCurrencyTotal {
+    currency: string
+    unpaidInvoiceAmount: number | string
+    collectionRate: number
 }
 
 export interface DashboardAppointment {
@@ -50,8 +57,9 @@ interface BackendDashboardSummary {
     bookedToday: number
     waitingRoom: number
     treatmentsDone: number
-    unpaidInvoiceAmount: number
-    collectionRate: number
+    unpaidInvoiceAmount: number | string | null
+    collectionRate: number | null
+    billingTotals?: BillingCurrencyTotal[] | null
     todayAppointments: BackendDashboardAppointment[]
     staffWorklist: BackendStaffWorklistItem[]
 }
@@ -60,8 +68,9 @@ export interface DashboardSummary {
     bookedToday: number
     waitingRoom: number
     treatmentsDone: number
-    unpaidInvoiceAmount: number
-    collectionRate: number
+    unpaidInvoiceAmount: number | string | null
+    collectionRate: number | null
+    billingTotals?: BillingCurrencyTotal[] | null
     metrics: DashboardMetric[]
     todayAppointments: DashboardAppointment[]
     staffWorklist: string[]
@@ -79,9 +88,8 @@ export const getDashboardToneClass = (tone: DashboardTone) =>
 
 const formatCurrency = (value: number) =>
     new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD',
-        maximumFractionDigits: 0,
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
     }).format(value)
 
 const formatTime = (dateTime?: string) => {
@@ -138,6 +146,48 @@ const getAppointmentTone = (status?: string): DashboardTone => {
     }
 }
 
+const buildBillingMetric = (
+    summary: BackendDashboardSummary,
+): DashboardMetric => {
+    const totals = summary.billingTotals
+    const currencyValues = totals?.map(total => ({
+        currency: total.currency,
+        value: formatCurrency(Number(total.unpaidInvoiceAmount)),
+    }))
+    if (currencyValues?.length)
+        return {
+            label: 'Unpaid invoices',
+            value:
+                currencyValues.length === 1
+                    ? `${currencyValues[0].currency} ${currencyValues[0].value}`
+                    : 'By currency',
+            currencyValues,
+            detail:
+                currencyValues.length === 1
+                    ? 'Open balance'
+                    : 'Open balance by currency',
+            tone: 'rose',
+        }
+    return {
+        label: 'Unpaid invoices',
+        value:
+            totals === null
+                ? 'Restricted'
+                : summary.unpaidInvoiceAmount == null
+                ? 'Unavailable'
+                : formatCurrency(Number(summary.unpaidInvoiceAmount)),
+        detail:
+            totals === null
+                ? 'Invoice read access required'
+                : totals?.length === 0
+                ? 'No issued invoices'
+                : summary.unpaidInvoiceAmount == null
+                ? 'Financial totals were not returned'
+                : 'Open balance',
+        tone: 'rose',
+    }
+}
+
 const buildMetrics = (summary: BackendDashboardSummary): DashboardMetric[] => [
     {
         label: 'Booked today',
@@ -157,12 +207,7 @@ const buildMetrics = (summary: BackendDashboardSummary): DashboardMetric[] => [
         detail: `${summary.treatmentsDone} completed today`,
         tone: 'mint',
     },
-    {
-        label: 'Unpaid invoices',
-        value: formatCurrency(summary.unpaidInvoiceAmount),
-        detail: 'Open balance',
-        tone: 'rose',
-    },
+    buildBillingMetric(summary),
 ]
 
 const formatStaffWorklist = (item: BackendStaffWorklistItem) =>
@@ -198,10 +243,18 @@ const normalizeDashboardSummary = (
     staffWorklist: summary.staffWorklist.map(formatStaffWorklist),
 })
 
-export const getDashboardSummary = async () => {
+export const getDashboardSummary = async (canViewFinancials = true) => {
     const summary = await apiClient.getData<BackendDashboardSummary>(
         '/api/dashboard/summary',
     )
 
+    if (!canViewFinancials) {
+        summary.unpaidInvoiceAmount = null
+        summary.collectionRate = null
+        summary.billingTotals = null
+        summary.todayAppointments = summary.todayAppointments.map(
+            appointment => ({ ...appointment, paymentStatus: undefined }),
+        )
+    }
     return normalizeDashboardSummary(summary)
 }
