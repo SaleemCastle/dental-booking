@@ -31,6 +31,10 @@ export type Permission =
     | 'treatments.delete'
     | 'messages.view'
     | 'payments.view'
+    | 'payments.create'
+    | 'invoices.view'
+    | 'invoices.create'
+    | 'invoices.update'
     | 'settings.view'
 
 export type AppModule =
@@ -388,6 +392,10 @@ export const getUserPermissionSet = (user: AuthUser | null) => {
         'treatment_plans.view',
         'treatment_plans.create',
         'treatment_plans.update',
+        'invoices.view',
+        'invoices.create',
+        'invoices.update',
+        'payments.create',
     ])
     knownPermissions.forEach(permission => {
         if (
@@ -515,9 +523,48 @@ export const canAccessModule = (
 ) => {
     if (module.id === 'audit_logs') return canViewAuditLogs(user)
     if (module.id === 'user_management') return canManageUsers(user)
+    if (module.id === 'payment_information') {
+        const billing = getBillingPermissions(user)
+        return (
+            Object.values(billing).some(Boolean) ||
+            getUserPermissionSet(user).has('payments.view')
+        )
+    }
     const permissions = getUserPermissionSet(user)
 
     return module.permissions.every(permission => permissions.has(permission))
+}
+
+export const getBillingPermissions = (user: AuthUser | null) => {
+    const roles = new Set(
+        getNamedValues(
+            user?.roles,
+            user && 'current_tenant_id' in user
+                ? ['slug']
+                : ['slug', 'key', 'name'],
+        ),
+    )
+    const grants = user
+        ? (extractUserPermissions(user).permissions as Set<string>)
+        : new Set<string>()
+    const allows = (permission: string) =>
+        Array.from(grants).some(
+            value =>
+                value === permission ||
+                value === '*' ||
+                (value.endsWith('.*') &&
+                    permission.startsWith(value.slice(0, -1))) ||
+                (value.startsWith('*.') && permission.endsWith(value.slice(1))),
+        )
+    const write = roles.has('admin') || roles.has('billing')
+    const read = write || roles.has('auditor')
+    return {
+        canViewInvoices: read || allows('invoices.view'),
+        canCreateInvoice: write || allows('invoices.create'),
+        canUpdateInvoice: write || allows('invoices.update'),
+        canViewPayments: read || allows('payments.view'),
+        canRecordPayment: write || allows('payments.create'),
+    }
 }
 
 export const getAuthorizedNavigationModules = (user: AuthUser | null) =>

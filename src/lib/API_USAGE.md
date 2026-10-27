@@ -489,3 +489,44 @@ account changes, logout, revocation, options, 422 and rate limiting. Override
 `AUDIT_LOGS_TEST_URL`, `AUDIT_LOGS_TEST_API_URL`, or `BROWSER_PATH` as needed. Mocked
 checks do not exercise a deployed database or replace the backend's
 `tests/Feature/Api/AuditLogApiTest.php` authorization/immutability coverage.
+
+## Billing workspace
+
+Patient details expose a permission-aware Billing tab. Payment Information opens
+the clinic invoice/payment workspace, including for billing members who do not
+have patient-directory access. Billing uses `src/services/billing.ts` through the
+central client with the verified session clinic's `X-Tenant-Id`. No gateway,
+charging, refund, deletion or payment-update operations are exposed.
+
+`getBillingPermissions` recognizes canonical clinic admin/billing roles for writes,
+auditor roles for reads, and the five billing permission grants with normal
+resource/action wildcards. Payment recording is independent of invoice editing.
+Treatment-plan and catalog selectors require their existing read permissions;
+members can also create custom service lines. Invoice creation captures sources
+on the server; the frontend sends source IDs and quantities without price/name
+overrides. Draft editing only sends invoice number and due date.
+
+Balances read all patient invoice pages before displaying totals. Drafts and void
+invoices are excluded, currencies stay separate, and a failed page hides the
+entire balance. UI calculations use integer minor units. Financial dashboard
+values are nullable and are masked when the member lacks invoice read access;
+the scalar display does not assume USD. The dashboard renders `billingTotals`
+as separate unpaid balances and collection rates for each currency. Null totals
+show an invoice-read access message; an empty array shows no issued invoices.
+
+Each payment attempt gets a random invoice-scoped idempotency key. Network/5xx
+failures freeze the submitted key and payload in the open dialog so Retry same
+payment can recover a committed payment, even after the invoice becomes paid.
+Closing an unconfirmed attempt warns staff to check payment history before
+starting another payment. Pending attempts are not persisted to browser storage.
+Payment forms record already-settled funds and send only documented fields.
+
+Run `npm run test:billing` for money, permission, payload, pagination and balance
+checks. `npm run test:billing:browser` uses mocked backend responses to exercise
+the browser workflow without modifying live data. Start the app on port 3017
+or set `BILLING_TEST_URL`; use `BILLING_TEST_API_URL` to match the configured
+backend origin and `BROWSER_PATH` to choose Chrome/Edge. Browser checks cover
+source snapshots, issue, zero totals, partial/full settlement, overpayment,
+idempotent recovery, receipts, confirmed void, archived patients, permissions,
+tenant isolation, loading/errors/empty states and phone layouts. They do not
+replace the backend's BillingApiTest/BillingMigrationTest database coverage.

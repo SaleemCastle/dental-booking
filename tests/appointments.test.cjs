@@ -691,6 +691,39 @@ const main = async () => {
     )
     assert.ok(html.includes('23:45'))
 
+    response = {
+        ...response,
+        unpaidInvoiceAmount: null,
+        collectionRate: null,
+        billingTotals: [
+            { currency: 'COP', unpaidInvoiceAmount: 10000, collectionRate: 0 },
+            { currency: 'USD', unpaidInvoiceAmount: 75, collectionRate: 25 },
+        ],
+    }
+    dashboardUi = {
+        canView: true,
+        summary: await dashboardService.getDashboardSummary(),
+        isLoading: false,
+    }
+    html = renderDashboard()
+    assert.ok(html.includes('Unpaid invoice balances by currency'))
+    assert.ok(html.includes('10,000.00'))
+    assert.ok(html.includes('75.00'))
+    assert.ok(html.includes('Collection rates by currency'))
+    assert.ok(html.includes('0% collected'))
+    assert.ok(html.includes('25% collected'))
+    assert.ok(!html.includes('Unavailable'))
+    dashboardUi = {
+        canView: true,
+        summary: await dashboardService.getDashboardSummary(false),
+        isLoading: false,
+    }
+    html = renderDashboard()
+    assert.ok(html.includes('Invoice read access required'))
+    assert.ok(!html.includes('10,000.00'))
+    assert.ok(!html.includes('75.00'))
+    assert.ok(!html.includes('Collection rates by currency'))
+
     let detailState
     const Details = compileModule('components/AppointmentDetails.tsx', {
         '../hooks/appointments': {

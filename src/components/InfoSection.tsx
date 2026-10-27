@@ -37,6 +37,7 @@ const InfoSection = ({
                     'calendar',
                     'audit_logs',
                     'user_management',
+                    'payment_information',
                 ].includes(currentTab) && (
                     <Searchbar
                         value={

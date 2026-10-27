@@ -24,6 +24,31 @@ import {
     appointmentPrimaryClass,
 } from './AppointmentDialog'
 
+const CollectionRate = ({
+    rate,
+    currency,
+}: {
+    rate: number
+    currency?: string
+}) => (
+    <div className="mt-4">
+        <p className="flex flex-wrap items-center justify-between gap-2 text-sm text-clinic-muted">
+            {currency && (
+                <strong className="text-clinic-ink">{currency}</strong>
+            )}
+            <span>
+                {rate}% collected{currency ? '' : ' from issued invoices.'}
+            </span>
+        </p>
+        <div className="mt-2 h-2 overflow-hidden rounded bg-clinic-canvas">
+            <div
+                className="h-full rounded bg-clinic-blue"
+                style={{ width: `${Math.min(Math.max(rate, 0), 100)}%` }}
+            />
+        </div>
+    </div>
+)
+
 const OverviewDashboard = ({
     onOpenPatient,
 }: {
@@ -83,11 +108,6 @@ const OverviewDashboard = ({
             </p>
         )
     }
-
-    const collectionRate = Math.min(
-        Math.max(summary?.collectionRate ?? 0, 0),
-        100,
-    )
 
     return (
         <section className="px-8 py-6">
@@ -155,7 +175,7 @@ const OverviewDashboard = ({
             )}
             {!error && (
                 <div aria-busy={isValidating}>
-                    <div className="grid grid-cols-4 gap-4">
+                    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                         {isLoading
                             ? Array.from({ length: 4 }).map((_, index) => (
                                   <div
@@ -176,9 +196,30 @@ const OverviewDashboard = ({
                                           )}`}>
                                           {metric.label}
                                       </div>
-                                      <div className="text-3xl font-extrabold text-clinic-ink">
-                                          {metric.value}
-                                      </div>
+                                      {metric.currencyValues?.length ? (
+                                          <ul
+                                              aria-label="Unpaid invoice balances by currency"
+                                              className="space-y-2">
+                                              {metric.currencyValues.map(
+                                                  total => (
+                                                      <li
+                                                          key={total.currency}
+                                                          className="flex flex-wrap items-baseline gap-x-2 font-extrabold text-clinic-ink">
+                                                          <span className="text-sm">
+                                                              {total.currency}
+                                                          </span>
+                                                          <span className="break-all text-2xl">
+                                                              {total.value}
+                                                          </span>
+                                                      </li>
+                                                  ),
+                                              )}
+                                          </ul>
+                                      ) : (
+                                          <div className="text-3xl font-extrabold text-clinic-ink">
+                                              {metric.value}
+                                          </div>
+                                      )}
                                       <p className="mt-1 text-sm text-clinic-muted">
                                           {metric.detail}
                                       </p>
@@ -277,17 +318,38 @@ const OverviewDashboard = ({
                                     </div>
                                     <MdOutlinePayments className="text-2xl text-clinic-blue" />
                                 </div>
-                                <div className="mt-5 h-2 overflow-hidden rounded bg-clinic-canvas">
-                                    <div
-                                        className="h-full rounded bg-clinic-blue"
-                                        style={{ width: `${collectionRate}%` }}
+                                {isLoading ? (
+                                    <p className="mt-4 text-sm text-clinic-muted">
+                                        Loading collection rate...
+                                    </p>
+                                ) : summary?.billingTotals === null ? (
+                                    <p className="mt-4 text-sm text-clinic-muted">
+                                        Invoice read access is required to view
+                                        payment health.
+                                    </p>
+                                ) : summary?.billingTotals?.length ? (
+                                    <div aria-label="Collection rates by currency">
+                                        {summary.billingTotals.map(total => (
+                                            <CollectionRate
+                                                key={total.currency}
+                                                currency={total.currency}
+                                                rate={total.collectionRate}
+                                            />
+                                        ))}
+                                    </div>
+                                ) : summary?.billingTotals?.length === 0 ? (
+                                    <p className="mt-4 text-sm text-clinic-muted">
+                                        No issued invoices.
+                                    </p>
+                                ) : summary?.collectionRate != null ? (
+                                    <CollectionRate
+                                        rate={summary.collectionRate}
                                     />
-                                </div>
-                                <p className="mt-1 text-sm text-clinic-muted">
-                                    {isLoading
-                                        ? 'Loading collection rate...'
-                                        : `${summary?.collectionRate}% collected from today's appointments.`}
-                                </p>
+                                ) : (
+                                    <p className="mt-4 text-sm text-clinic-muted">
+                                        Collection rate unavailable.
+                                    </p>
+                                )}
                             </div>
 
                             <div className="rounded-md border border-clinic-line bg-white p-5 shadow-sm">
