@@ -74,6 +74,20 @@ export default ExamplePage
 
 For convenience, [Ziggy](https://github.com/tighten/ziggy#spas-or-separate-repos) may be used to reference your Laravel application's named route URLs from your React application.
 
+## Patient documents workspace
+
+Patient details → Medical Record includes Documents & imaging. Clinical staff can upload one PDF, JPEG, PNG or WebP at a time, optionally linking a patient appointment or clinical note. Admin and Dentist roles can read; delegated `patient_documents.view` grants read access. Writes require Admin or Dentist without Receptionist, independently of permission wildcards. Archived patients can still receive documents.
+
+Requests use Sanctum authentication and the current clinic's `X-Tenant-Id` header. Previews and downloads fetch the private API attachment; no bucket URL or bearer link is used. Images use temporary browser object URLs. PDFs render locally with [PDF.js](https://mozilla.github.io/pdf.js/getting_started/) to canvas, without a scripting or interactive annotation layer. Closing a preview aborts outstanding retrieval and releases its resources. Previewing opens the download endpoint and produces the backend's normal download audit.
+
+Use Node 22.13+ (or Node 24+) for PDF.js. `npm run dev` and `npm run build` prepare its versioned worker, fonts, CMaps and WASM files under `public/pdfjs/`; include those generated static assets when deploying. They contain library code only. The PDF library loads when a PDF is previewed.
+
+The browser limit defaults to 20 MiB. If the API's `PATIENT_DOCUMENT_MAX_SIZE_KB` changes, set `NEXT_PUBLIC_PATIENT_DOCUMENT_MAX_SIZE_KB` to the same KiB value **before building**. Browser checks are advisory; server content detection, relationship validation and size limits remain authoritative. A 413 may come from PHP or the proxy.
+
+Archive retains authenticated retrieval and cannot be undone in this UI. Removal revokes access first; a 503 leaves a visible retry action for finishing storage removal. This retry state lasts for the current workspace session. Operations must monitor and replay pending purges using the backend workflow after navigation or reload. If an upload response is lost, refresh the list before retrying to avoid duplicates.
+
+Run `npm test` and `npm run build`. With a production server at port 3013, run `npm run test:patient-documents:browser` (Node 22+, Chrome/Edge, or `BROWSER_PATH`). Override `DOCUMENTS_TEST_URL` and `DOCUMENTS_TEST_API_URL` if needed. Browser checks intercept the API and never contact a live bucket; staging still needs an end-to-end smoke test against the configured provider.
+
 ## Contributing
 
 Thank you for considering contributing to Breeze Next! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).

@@ -125,7 +125,19 @@ export const http: AxiosInstance = Axios.create({
 
 http.interceptors.response.use(
     response => response,
-    error => {
+    async error => {
+        // Binary endpoints still return the standard JSON error envelope.
+        // Decode before normalization so validation and session events survive.
+        if (
+            typeof Blob !== 'undefined' &&
+            error.response?.data instanceof Blob
+        ) {
+            try {
+                error.response.data = JSON.parse(await error.response.data.text())
+            } catch {
+                // Non-JSON proxy errors use the normal status-based fallback.
+            }
+        }
         const normalized = normalizeAxiosError(error)
         // A clinic may have been deactivated or membership/grants revoked.
         // A normal policy denial is also possible: recheck the session rather
