@@ -20,6 +20,7 @@ const getIcons = (tab: Tabs, active: boolean) => {
         case Tabs.Messages:
             return <AiOutlineMessage className={iconClass} />
         case Tabs.Dashboard:
+        case Tabs.Reports:
             return <MdDashboard className={iconClass} />
         case Tabs.PatientList:
             return <BsPersonFill className={iconClass} />

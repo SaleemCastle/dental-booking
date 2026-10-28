@@ -7,6 +7,7 @@ import AppointmentSchedule from './AppointmentSchedule'
 import AuditLogViewer from './AuditLogViewer'
 import UserRoleManagement from './UserRoleManagement'
 import BillingWorkspace from './BillingWorkspace'
+import ReportingWorkspace from './ReportingWorkspace'
 import { PatientArchivedFilter, PatientPayload } from '../services/patients'
 
 const MainArea = ({
@@ -65,6 +66,8 @@ const MainArea = ({
 
     const renderTabDetailSection = (tab: string) => {
         switch (tab) {
+            case 'reports':
+                return <ReportingWorkspace />
             case 'dashboard':
                 return (
                     <OverviewDashboard onOpenPatient={onOpenRelatedPatient} />
@@ -127,6 +130,7 @@ const MainArea = ({
                 'audit_logs',
                 'user_management',
                 'payment_information',
+                'reports',
                 ].includes(currentTab) && (
                     <CurrentTabDetail
                         currentTab={currentTab}

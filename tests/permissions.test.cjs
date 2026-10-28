@@ -80,6 +80,7 @@ assert.deepEqual(
         'messages',
         'payment_information',
         'settings',
+        'reports',
         'audit_logs',
         'user_management',
     ],
@@ -87,12 +88,12 @@ assert.deepEqual(
 
 assert.deepEqual(
     getAuthorizedNavigationModules(receptionist).map(module => module.id),
-    ['dashboard', 'calendar', 'patient_list', 'messages'],
+    ['dashboard', 'calendar', 'patient_list', 'messages', 'reports'],
 )
 
 assert.deepEqual(
     getAuthorizedNavigationModules(billing).map(module => module.id),
-    ['dashboard', 'payment_information'],
+    ['dashboard', 'payment_information', 'reports'],
 )
 
 assert.deepEqual(
@@ -109,6 +110,7 @@ assert.deepEqual(
         'messages',
         'payment_information',
         'settings',
+        'reports',
     ],
 )
 assert.deepEqual(
