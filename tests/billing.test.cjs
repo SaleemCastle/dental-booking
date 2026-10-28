@@ -24,6 +24,7 @@ const compile = (file, dependencies = {}) => {
     return module.exports
 }
 const money = compile('lib/billing.ts')
+const paymentLinks = compile('lib/payment-links.ts')
 const permissions = compile('lib/permissions.ts', {
     '../Constants': compile('Constants/index.tsx'),
 })
@@ -106,6 +107,15 @@ for (const role of ['admin', 'billing', 'auditor', 'dentist', 'receptionist']) {
     assert.equal(access.canCreateInvoice, ['admin', 'billing'].includes(role))
     assert.equal(access.canRecordPayment, ['admin', 'billing'].includes(role))
     assert.equal(
+        access.canViewPaymentLinks,
+        ['admin', 'billing', 'auditor'].includes(role),
+    )
+    for (const action of ['Create', 'Cancel', 'Refresh'])
+        assert.equal(
+            access[`can${action}PaymentLink`],
+            ['admin', 'billing'].includes(role),
+        )
+    assert.equal(
         permissions.canAccessModuleId(user, 'payment_information'),
         ['admin', 'billing', 'auditor'].includes(role),
     )
@@ -159,7 +169,150 @@ const service = compile('services/billing.ts', {
     },
 })
 const options = { tenantId: 37, signal: new AbortController().signal }
+const link = {
+    id: 9,
+    invoice_id: 1,
+    status: 'active',
+    amount: '0.20',
+    currency: 'USD',
+    checkout_url: 'https://checkout.example/session-9',
+    expires_at: '2020-01-01T00:00:00Z',
+    idempotency_key: 'Checkout:Case-1',
+}
+for (const status of [
+    'creating',
+    'active',
+    'pending',
+    'unknown',
+    'completed',
+    'expired',
+    'cancelled',
+    'failed',
+]) {
+    assert.equal(
+        paymentLinks.blocksInvoicePayments({ ...link, status }),
+        !['expired', 'cancelled', 'failed'].includes(status),
+    )
+    assert.equal(
+        paymentLinks.activeCheckoutUrl({ ...link, status }),
+        status === 'active' ? link.checkout_url : null,
+    )
+}
+for (const checkout_url of [
+    'javascript:alert(1)',
+    'data:text/html,test',
+    '//checkout.example',
+    'http://checkout.example',
+    'https://key:secret@checkout.example',
+    'invalid',
+])
+    assert.equal(
+        paymentLinks.activeCheckoutUrl({ ...link, checkout_url }),
+        null,
+    )
+for (const action of ['view', 'create', 'cancel', 'refresh']) {
+    for (const grant of [
+        `payment_links.${action}`,
+        'payment_links.*',
+        `*.${action}`,
+        '*',
+    ]) {
+        const access = permissions.getBillingPermissions({
+            current_tenant_id: 37,
+            roles: [],
+            permissions: [grant],
+        })
+        const name =
+            action === 'view'
+                ? 'canViewPaymentLinks'
+                : `can${action[0].toUpperCase() + action.slice(1)}PaymentLink`
+        assert.equal(access[name], true, grant)
+    }
+}
+assert.equal(
+    permissions.getBillingPermissions({ permissions: ['payments.create'] })
+        .canCreatePaymentLink,
+    false,
+)
+const storage = new Map()
+global.window = {
+    sessionStorage: {
+        getItem: key => storage.get(key) || null,
+        setItem: (key, value) => storage.set(key, value),
+        removeItem: key => storage.delete(key),
+    },
+}
+paymentLinks.savePaymentLinkKey(37, 1, 'Checkout:Case-1')
+assert.equal(paymentLinks.readPaymentLinkKey(37, 1), 'Checkout:Case-1')
+assert.equal(paymentLinks.readPaymentLinkKey(52, 1), null)
+assert.equal(paymentLinks.readPaymentLinkKey(37, 2), null)
+paymentLinks.savePaymentLinkKey(37, 1, null)
+assert.equal(paymentLinks.readPaymentLinkKey(37, 1), null)
+delete global.window
 async function run() {
+    reply = { data: { payment_link: link } }
+    assert.deepEqual(
+        await service.createPaymentLink(
+            1,
+            {
+                idempotency_key: link.idempotency_key,
+                amount: '999',
+                currency: 'EUR',
+                provider: 'fake',
+                metadata: { card: 'forbidden' },
+            },
+            options,
+        ),
+        link,
+    )
+    assert.deepEqual(requests.at(-1).data, {
+        idempotency_key: 'Checkout:Case-1',
+    })
+    assert.equal(requests.at(-1).url, '/api/invoices/1/payment-links')
+    assert.deepEqual(requests.at(-1).headers, { 'X-Tenant-Id': 37 })
+    assert.equal(requests.at(-1).signal, options.signal)
+    await service.getPaymentLink(9, options)
+    assert.equal(requests.at(-1).method, 'get')
+    assert.equal(requests.at(-1).url, '/api/payment-links/9')
+    for (const action of ['refresh', 'cancel']) {
+        assert.deepEqual(
+            await service[`${action}PaymentLink`](9, options),
+            link,
+        )
+        assert.equal(requests.at(-1).url, `/api/payment-links/9/${action}`)
+        assert.equal(requests.at(-1).method, 'post')
+        assert.deepEqual(requests.at(-1).data, {})
+    }
+    reply = request => ({
+        data: [
+            {
+                ...link,
+                id: request.params.page,
+                status: request.params.page === 2 ? 'unknown' : 'failed',
+            },
+        ],
+        meta: {
+            pagination: { current_page: request.params.page, last_page: 2 },
+        },
+    })
+    const history = await service.getInvoicePaymentLinkHistory(1, options)
+    assert.equal(history.length, 2)
+    assert.ok(history.some(paymentLinks.blocksInvoicePayments))
+    assert.equal(requests.at(-1).params.page, 2)
+    assert.equal(requests.at(-1).params.per_page, 100)
+    reply = {
+        data: [{ ...link, invoice_id: 2 }],
+        meta: { pagination: { last_page: 1 } },
+    }
+    await assert.rejects(
+        service.getInvoicePaymentLinkHistory(1, options),
+        /unavailable/,
+    )
+    reply = { data: [link], meta: {} }
+    await assert.rejects(
+        service.getInvoicePaymentLinkHistory(1, options),
+        /pagination/,
+    )
     reply = {
         data: [invoice],
         meta: { pagination: { current_page: 2, last_page: 3, total: 31 } },

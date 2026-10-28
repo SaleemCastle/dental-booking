@@ -88,6 +88,18 @@ Archive retains authenticated retrieval and cannot be undone in this UI. Removal
 
 Run `npm test` and `npm run build`. With a production server at port 3013, run `npm run test:patient-documents:browser` (Node 22+, Chrome/Edge, or `BROWSER_PATH`). Override `DOCUMENTS_TEST_URL` and `DOCUMENTS_TEST_API_URL` if needed. Browser checks intercept the API and never contact a live bucket; staging still needs an end-to-end smoke test against the configured provider.
 
+## Hosted invoice payments
+
+Open Billing from the sidebar or patient details and select an invoice. Admin and Billing can generate, refresh and request cancellation of checkouts; Auditor can read and share existing active links. Explicit `payment_links.view|create|cancel|refresh` grants and resource/action wildcards also apply. Reading invoice details still requires invoice read access. Deploy the online payment API, run its migrations and reseed permissions, and provision the clinic provider from the trusted backend console before use. Provider credentials never belong in frontend environment variables.
+
+Generate payment link reserves the remaining balance on an issued/partially-paid invoice. Only the idempotency key is posted. The full paginated history is checked before enabling a new checkout, manual payment or void action. Active, creating, pending, unknown and unreconciled completed attempts keep those actions paused. Expiry timestamps alone do not release a checkout. Refresh payment status uses the authenticated backend reconciliation endpoint, then reloads the invoice, ledger, balances and dashboard. Returning from hosted checkout alone does not mark an invoice paid. HandyPay cancellation currently reports an unsupported operation and leaves the checkout payable.
+
+Copy and Open recheck stored link state and expose HTTPS checkout URLs only while active. Resend opens a staff-reviewed email draft with the existing checkout link; this API has no message-delivery endpoint, so the application does not automatically send email. The draft contains no invoice lines or patient details.
+
+An uncertain creation retains its original key in tab-scoped session storage, scoped by clinic and invoice, so a reload or navigation can retry the same operation. Only keys are stored there. Inspect attempt history after failures. An unknown outcome needs provider reconciliation; do not clear browser state to start another checkout. The backend remains authoritative for duplicate protection and all invoice locks.
+
+Run `npm test` and `npm run build`. With the frontend served on port 3017, run `npm run test:payment-links:browser` and `npm run test:billing:browser` with Node 22+ and Chrome/Edge (or `BROWSER_PATH`). Override `BILLING_TEST_URL` and `BILLING_TEST_API_URL` for other origins. Browser checks stub all API traffic and do not contact HandyPay. Complete the backend's merchant sandbox checklist separately before enabling live payments.
+
 ## Operational reporting
 
 Open **Reports** in the clinic sidebar (`/?tab=reports`). Reports use the authenticated clinic ID in `X-Tenant-Id`, source read permissions and the four `/api/reports/*` aggregate endpoints. Appointment read grants appointment/provider activity; treatment activity also needs treatment read. Billing requires both invoice and payment read (including Admin, Billing and Auditor policies). Capacity columns require availability read. `reports.*` grants no access.
