@@ -48,6 +48,29 @@ export interface Payment {
     paid_at: string
     created_at: string
 }
+export type PaymentLinkStatus =
+    | 'creating'
+    | 'active'
+    | 'pending'
+    | 'completed'
+    | 'expired'
+    | 'cancelled'
+    | 'failed'
+    | 'unknown'
+export interface PaymentLink {
+    id: number
+    invoice_id: number
+    provider: string
+    external_reference: string | null
+    checkout_url: string | null
+    expires_at: string | null
+    status: PaymentLinkStatus
+    amount: string
+    currency: string
+    idempotency_key: string
+    created_at: string
+    updated_at: string
+}
 export type NewInvoiceItem = { quantity: number } & (
     | { treatment_plan_item_id: number }
     | { treatment_id: number }
@@ -213,6 +236,78 @@ export const getPayments = (
 export const getPayment = async (id: number, options: BillingOptions) =>
     (await call<{ payment: Payment }>(options, 'get', `/api/payments/${id}`))
         .data.payment
+export const getInvoicePaymentLinks = (
+    invoiceId: number,
+    params: { page?: number; per_page?: number },
+    options: BillingOptions,
+) =>
+    page<PaymentLink>(
+        `/api/invoices/${invoiceId}/payment-links`,
+        { page: 1, per_page: 15, ...params },
+        options,
+    )
+// Read the entire history before deciding whether another checkout is safe.
+// An outstanding reservation can be on any page, including an older attempt.
+export const getInvoicePaymentLinkHistory = async (
+    invoiceId: number,
+    options: BillingOptions,
+) => {
+    const attempts: PaymentLink[] = []
+    let next = 1
+    let last = 1
+    do {
+        const result = await getInvoicePaymentLinks(
+            invoiceId,
+            { page: next, per_page: 100 },
+            options,
+        )
+        if (result.records.some(link => link.invoice_id !== invoiceId))
+            throw new Error('Payment links are unavailable for this invoice.')
+        attempts.push(...result.records)
+        last = Number(result.meta.lastPage)
+        next++
+    } while (next <= last)
+    return attempts
+}
+export const createPaymentLink = async (
+    invoiceId: number,
+    payload: { idempotency_key: string },
+    options: BillingOptions,
+) =>
+    (
+        await call<{ payment_link: PaymentLink }>(
+            options,
+            'post',
+            `/api/invoices/${invoiceId}/payment-links`,
+            { idempotency_key: payload.idempotency_key },
+        )
+    ).data.payment_link
+export const getPaymentLink = async (id: number, options: BillingOptions) =>
+    (
+        await call<{ payment_link: PaymentLink }>(
+            options,
+            'get',
+            `/api/payment-links/${id}`,
+        )
+    ).data.payment_link
+export const refreshPaymentLink = async (id: number, options: BillingOptions) =>
+    (
+        await call<{ payment_link: PaymentLink }>(
+            options,
+            'post',
+            `/api/payment-links/${id}/refresh`,
+            {},
+        )
+    ).data.payment_link
+export const cancelPaymentLink = async (id: number, options: BillingOptions) =>
+    (
+        await call<{ payment_link: PaymentLink }>(
+            options,
+            'post',
+            `/api/payment-links/${id}/cancel`,
+            {},
+        )
+    ).data.payment_link
 export const recordPayment = async (
     payload: NewPayment,
     options: BillingOptions,

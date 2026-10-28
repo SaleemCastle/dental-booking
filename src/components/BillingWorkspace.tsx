@@ -1,4 +1,4 @@
-import React, { FormEvent, useRef, useState } from 'react'
+import React, { FormEvent, useCallback, useRef, useState } from 'react'
 import useSWR from 'swr'
 import { useSWRConfig } from 'swr'
 import { useAuthSession } from '../context/AuthSessionContext'
@@ -13,11 +13,13 @@ import {
     paymentMethods,
 } from '../lib/billing'
 import { getBillingPermissions } from '../lib/permissions'
+import { blocksInvoicePayments } from '../lib/payment-links'
 import { dashboardSummaryKey } from '../services/dashboard'
 import {
     BillingPage,
     getInvoice,
     getInvoices,
+    getInvoicePaymentLinkHistory,
     getPatientBillingBalances,
     getPayments,
     Invoice,
@@ -33,6 +35,7 @@ import AppointmentDialog, {
 import BillingFeedback from './BillingFeedback'
 import BillingPaymentForm from './BillingPaymentForm'
 import InvoiceForm from './InvoiceForm'
+import InvoicePaymentLinks from './InvoicePaymentLinks'
 import { isArchivedPatient } from './PatientRowDetails'
 
 const Status = ({ status }: { status: InvoiceStatus }) => (
@@ -219,6 +222,7 @@ export default function BillingWorkspace({ patient }: { patient?: Patient }) {
     const [editor, setEditor] = useState<'create' | 'edit' | null>(null)
     const [paymentOpen, setPaymentOpen] = useState(false)
     const [paymentTarget, setPaymentTarget] = useState<Invoice | undefined>()
+    const [linkBusyInvoice, setLinkBusyInvoice] = useState<number | null>(null)
     const [action, setAction] = useState<'issue' | 'void' | null>(null)
     const [reason, setReason] = useState('')
     const [busy, setBusy] = useState(false)
@@ -269,7 +273,7 @@ export default function BillingWorkspace({ patient }: { patient?: Patient }) {
     )
     const detail = useSWR(
         ready && access.canViewInvoices && selected !== null
-            ? ['billing-invoice', user, currentTenant.id, selected, revision]
+            ? ['billing-invoice', user, currentTenant.id, selected]
             : null,
         async () => {
             const result = await getInvoice(selected, {
@@ -282,6 +286,30 @@ export default function BillingWorkspace({ patient }: { patient?: Patient }) {
         { shouldRetryOnError: false },
     )
     const invoice = !detail.error ? detail.data : undefined
+    const links = useSWR(
+        ready && invoice && access.canViewPaymentLinks
+            ? ['billing-payment-links', user, currentTenant.id, invoice.id]
+            : null,
+        () =>
+            getInvoicePaymentLinkHistory(invoice.id, {
+                tenantId: currentTenant.id,
+            }),
+        { shouldRetryOnError: false },
+    )
+    const checkoutBlocksPayment = Boolean(
+        invoice &&
+            (linkBusyInvoice === invoice.id ||
+                (access.canViewPaymentLinks &&
+                    (!links.data ||
+                        links.error ||
+                        links.data.some(blocksInvoicePayments)))),
+    )
+    const updateCheckoutBusy = useCallback(
+        (value: boolean) => {
+            setLinkBusyInvoice(value ? invoice?.id ?? null : null)
+        },
+        [invoice?.id],
+    )
     const canCreate =
         ready &&
         access.canCreateInvoice &&
@@ -292,6 +320,8 @@ export default function BillingWorkspace({ patient }: { patient?: Patient }) {
     const refresh = () => {
         setPage(1)
         setRevision(value => value + 1)
+        void detail.mutate()
+        void links.mutate()
         void mutate(dashboardSummaryKey(user)).catch(() => undefined)
     }
     const acceptInvoice = (saved: Invoice) => {
@@ -814,6 +844,7 @@ export default function BillingWorkspace({ patient }: { patient?: Patient }) {
                                         <button
                                             type="button"
                                             className={primary}
+                                            disabled={checkoutBlocksPayment}
                                             onClick={() => {
                                                 setPaymentTarget(invoice)
                                                 setPaymentOpen(true)
@@ -825,11 +856,30 @@ export default function BillingWorkspace({ patient }: { patient?: Patient }) {
                                         <button
                                             type="button"
                                             className={`${button} text-rose-700`}
+                                            disabled={checkoutBlocksPayment}
                                             onClick={() => startAction('void')}>
                                             Void invoice
                                         </button>
                                     )}
                                 </div>
+                                {checkoutBlocksPayment && (
+                                    <p className="text-sm text-clinic-muted">
+                                        New manual payments and voiding are
+                                        paused while checkout history is checked
+                                        or a checkout remains unresolved.
+                                    </p>
+                                )}
+                                <InvoicePaymentLinks
+                                    key={`${currentTenant.id}-${user.id}-${invoice.id}`}
+                                    invoice={invoice}
+                                    attempts={links.data}
+                                    historyError={links.error}
+                                    historyBusy={links.isValidating}
+                                    disabled={blocked}
+                                    onReload={() => links.mutate()}
+                                    onChanged={refresh}
+                                    onBusyChange={updateCheckoutBusy}
+                                />
                                 <PaymentList
                                     key={invoice.id}
                                     invoiceId={invoice.id}

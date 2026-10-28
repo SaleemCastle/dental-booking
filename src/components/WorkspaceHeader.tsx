@@ -108,7 +108,7 @@ const WorkspaceHeader = ({
                         {currentTenant.name}
                     </p>
                 )}
-                <h1 className="min-w-0 truncate text-lg font-bold text-clinic-ink capitalize">
+                <h1 className="min-w-0 max-w-full truncate text-lg font-bold text-clinic-ink capitalize">
                     {currentTab === 'user_management'
                         ? 'User & Role Management'
                         : formatModuleLabel(currentTab)}

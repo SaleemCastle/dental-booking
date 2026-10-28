@@ -208,6 +208,8 @@ const onRequest = async ({ method, url, headers, payload }) => {
         }
     if (url.pathname === '/api/treatment-plans/8')
         return { data: { treatmentPlan: plan } }
+    if (/^\/api\/invoices\/\d+\/payment-links$/.test(url.pathname) && method === 'GET')
+        return paginate([], url)
     if (url.pathname === '/api/invoices' && method === 'GET') {
         if (delayed) await new Promise(resolve => setTimeout(resolve, 500))
         if (failure)

@@ -13,6 +13,7 @@
         "test:reporting:browser": "node tests/reporting.browser.cjs",
         "test:billing": "node tests/billing.test.cjs",
         "test:billing:browser": "node tests/billing.browser.cjs",
+        "test:payment-links:browser": "node tests/payment-links.browser.cjs",
         "test:patient-documents": "node tests/patient-documents.test.cjs",
         "test:patient-documents:browser": "node tests/patient-documents.browser.cjs",
         "test:treatment-plans": "node tests/treatment-plans.test.cjs",

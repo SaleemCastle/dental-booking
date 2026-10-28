@@ -34,6 +34,10 @@ export type Permission =
     | 'messages.view'
     | 'payments.view'
     | 'payments.create'
+    | 'payment_links.view'
+    | 'payment_links.create'
+    | 'payment_links.cancel'
+    | 'payment_links.refresh'
     | 'invoices.view'
     | 'invoices.create'
     | 'invoices.update'
@@ -407,6 +411,10 @@ export const getUserPermissionSet = (user: AuthUser | null) => {
         'invoices.create',
         'invoices.update',
         'payments.create',
+        'payment_links.view',
+        'payment_links.create',
+        'payment_links.cancel',
+        'payment_links.refresh',
     ])
     knownPermissions.forEach(permission => {
         if (
@@ -595,6 +603,10 @@ export const getBillingPermissions = (user: AuthUser | null) => {
         canUpdateInvoice: write || allows('invoices.update'),
         canViewPayments: read || allows('payments.view'),
         canRecordPayment: write || allows('payments.create'),
+        canViewPaymentLinks: read || allows('payment_links.view'),
+        canCreatePaymentLink: write || allows('payment_links.create'),
+        canCancelPaymentLink: write || allows('payment_links.cancel'),
+        canRefreshPaymentLink: write || allows('payment_links.refresh'),
     }
 }
 
