@@ -27,6 +27,7 @@
         "test:treatments": "node tests/treatments.test.cjs",
         "test:appointments": "node tests/appointments.test.cjs",
         "test:appointments:browser": "node tests/appointments.browser.cjs",
+        "test:calendar:browser": "node tests/appointment-calendar.browser.cjs",
         "test:clinical-notes": "node tests/clinical-notes.test.cjs",
         "test:clinical-notes:browser": "node tests/clinical-notes.browser.cjs",
         "test:tasks": "node tests/tasks.test.cjs && node tests/follow-ups.test.cjs",

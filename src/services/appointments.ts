@@ -76,6 +76,30 @@ export interface AppointmentProvider {
     last_name?: string
 }
 
+export interface ProviderAvailabilityInterval {
+    start_time: string
+    end_time: string
+}
+
+export interface ProviderAvailabilityException {
+    date: string
+    working_hours: ProviderAvailabilityInterval[]
+    breaks: ProviderAvailabilityInterval[]
+}
+
+export interface ProviderAvailability {
+    dentist_id: number
+    configured: boolean
+    timezone: string
+    weekly_hours: Array<ProviderAvailabilityInterval & { day_of_week: number }>
+    breaks: Array<ProviderAvailabilityInterval & { day_of_week: number }>
+    exceptions: ProviderAvailabilityException[]
+}
+
+type ProviderAvailabilityResponse =
+    | ProviderAvailability
+    | { availability: ProviderAvailability }
+
 type AppointmentResource = Partial<Appointment>
 type AppointmentResponse =
     | AppointmentResource
@@ -218,3 +242,12 @@ export const getProviderName = (provider: AppointmentProvider) =>
     provider.name ||
     [provider.first_name, provider.last_name].filter(Boolean).join(' ') ||
     `Provider #${provider.id}`
+
+export const getProviderAvailability = async (
+    dentistId: number,
+): Promise<ProviderAvailability> => {
+    const data = await apiClient.getData<ProviderAvailabilityResponse>(
+        `/api/dentists/${dentistId}/availability`,
+    )
+    return 'availability' in data ? data.availability : data
+}
