@@ -30,6 +30,9 @@ const permissions = compileModule('lib/permissions.ts', {
     '../Constants': constants,
 })
 const workflow = compileModule('lib/appointment-workflow.ts')
+const calendar = compileModule('lib/appointment-calendar.ts', {
+    './appointment-workflow': workflow,
+})
 const fixture = {
     id: 11,
     patient_id: 4,
@@ -131,6 +134,138 @@ const main = async () => {
     response = { appointment: fixture }
     assert.deepEqual(await service.getAppointment(11), appointment)
     assert.deepEqual(requests.pop(), ['get', '/api/appointments/11'])
+    response = {
+        availability: {
+            dentist_id: 9,
+            configured: true,
+            timezone: 'UTC',
+            weekly_hours: [
+                { day_of_week: 5, start_time: '09:00', end_time: '17:00' },
+            ],
+            breaks: [],
+            exceptions: [],
+        },
+    }
+    assert.equal((await service.getProviderAvailability(9)).configured, true)
+    assert.deepEqual(requests.pop(), ['get', '/api/dentists/9/availability'])
+    assert.equal(calendar.getWeekStart('2026-10-16'), '2026-10-11')
+    assert.deepEqual(calendar.getCalendarWeek('2026-10-16'), [
+        '2026-10-11',
+        '2026-10-12',
+        '2026-10-13',
+        '2026-10-14',
+        '2026-10-15',
+        '2026-10-16',
+        '2026-10-17',
+    ])
+    assert.deepEqual(
+        calendar.availabilityForDate(response.availability, '2026-10-16')
+            .workingHours,
+        response.availability.weekly_hours,
+    )
+    assert.deepEqual(
+        calendar.availabilityForDate(
+            {
+                ...response.availability,
+                exceptions: [
+                    {
+                        date: '2026-10-16',
+                        working_hours: [],
+                        breaks: [],
+                    },
+                ],
+            },
+            '2026-10-16',
+        ),
+        { workingHours: [], breaks: [], isException: true },
+    )
+    assert.deepEqual(
+        calendar.calendarIntervalStyle({
+            start_time: '12:00',
+            end_time: '13:00',
+        }),
+        { top: '720px', height: '60px' },
+    )
+    assert.deepEqual(
+        calendar.calendarIntervalStyle({
+            start_time: '18:30',
+            end_time: '24:00',
+        }),
+        { top: '1110px', height: '330px' },
+    )
+    const overnight = calendar.layoutCalendarAppointments(
+        [appointment],
+        '2026-10-17',
+    )
+    assert.equal(overnight.length, 1)
+    assert.equal(overnight[0].start, 0)
+    assert.equal(overnight[0].end, 15)
+    assert.equal(overnight[0].continuesBefore, true)
+    assert.equal(
+        calendar.layoutCalendarAppointments([appointment], '2026-10-18').length,
+        0,
+    )
+    const endsAtMidnight = { ...appointment, endsAt: '2026-10-17T00:00:00Z' }
+    assert.equal(
+        calendar.layoutCalendarAppointments([endsAtMidnight], '2026-10-17')
+            .length,
+        0,
+    )
+    const simultaneous = calendar.layoutCalendarAppointments(
+        [
+            earlier,
+            { ...earlier, id: 13 },
+            {
+                ...earlier,
+                id: 14,
+                startsAt: '2026-10-16T09:00:00Z',
+                endsAt: '2026-10-16T09:30:00Z',
+            },
+        ],
+        '2026-10-16',
+    )
+    assert.deepEqual(
+        simultaneous.map(item => [item.column, item.columns]),
+        [
+            [0, 2],
+            [1, 2],
+            [0, 1],
+        ],
+    )
+    assert.equal(
+        calendar.layoutCalendarAppointments([appointment], '2026-10-16')[0]
+            .start,
+        1425,
+    )
+    for (const user of [
+        null,
+        { permissions: ['appointments.create', 'appointments.update'] },
+    ])
+        assert.deepEqual(permissions.getProviderAvailabilityPermissions(user), {
+            canView: false,
+            canUpdate: false,
+        })
+    assert.deepEqual(
+        permissions.getProviderAvailabilityPermissions({
+            permissions: ['provider_availabilities.view'],
+        }),
+        { canView: true, canUpdate: false },
+    )
+    assert.deepEqual(
+        permissions.getProviderAvailabilityPermissions({
+            current_tenant_id: 37,
+            roles: [{ slug: 'admin' }],
+            permissions: [],
+        }),
+        { canView: true, canUpdate: true },
+    )
+    assert.deepEqual(
+        permissions.getProviderAvailabilityPermissions({
+            permissions: ['provider_availabilities.*'],
+        }),
+        { canView: true, canUpdate: true },
+    )
+    response = { appointment: fixture }
     const values = workflow.getAppointmentFormValues(appointment, '2026-10-16')
     assert.deepEqual(workflow.validateAppointmentForm(values, rooms), {})
     assert.deepEqual(workflow.toAppointmentPayload(values, appointment), {})
@@ -375,6 +510,7 @@ const main = async () => {
         '../context/AuthSessionContext': { useAuthSession: () => session },
         '../lib/permissions': permissions,
         '../lib/appointment-workflow': workflow,
+        '../lib/appointment-calendar': calendar,
         '../services/appointments': service,
         '../services/dashboard': dashboardService,
     })
@@ -437,6 +573,15 @@ const main = async () => {
     const dashboardKey = dashboardService.dashboardSummaryKey(session.user)
     cache.set(JSON.stringify(dashboardKey), dashboardSummary)
     await adminState.syncAppointment(moved, appointment)
+    assert.ok(
+        mutations.some(
+            mutation =>
+                mutation.key[0] === 'appointment-week' &&
+                mutation.key[2] === '2026-10-11' &&
+                mutation.revalidate === true,
+        ),
+        'Appointment changes invalidate cached calendar weeks',
+    )
     assert.equal(cache.get(JSON.stringify(dashboardKey)), undefined)
     assert.ok(
         mutations.some(
@@ -540,12 +685,47 @@ const main = async () => {
 
     let uiState = {
         ...adminState,
-        appointments: [appointment, earlier],
+        appointments: [
+            {
+                ...appointment,
+                startsAt: `${workflow.utcToday()}T09:00:00.000Z`,
+                endsAt: `${workflow.utcToday()}T09:30:00.000Z`,
+            },
+            {
+                ...earlier,
+                startsAt: `${workflow.utcToday()}T08:00:00.000Z`,
+                endsAt: `${workflow.utcToday()}T08:30:00.000Z`,
+            },
+        ],
         isLoading: false,
     }
     const Schedule = compileModule('components/AppointmentSchedule.tsx', {
-        '../hooks/appointments': { useAppointments: () => uiState },
+        '../hooks/appointments': {
+            useAppointments: () => ({
+                ...uiState,
+                user: session.user,
+            }),
+            useAppointmentMutationSync: () => async () => {},
+        },
+        swr: {
+            __esModule: true,
+            default: key => ({
+                data: !key
+                    ? undefined
+                    : key[0] === 'appointment-providers'
+                    ? [{ id: 9, name: 'Alex Rivera' }]
+                    : key[0] === 'appointment-locations'
+                    ? rooms
+                    : key[0] === 'appointments'
+                    ? []
+                    : undefined,
+                error: undefined,
+                isValidating: false,
+                mutate: async () => {},
+            }),
+        },
         '../lib/appointment-workflow': workflow,
+        '../lib/appointment-calendar': calendar,
         '../services/appointments': service,
         './AppointmentDetails': () => null,
         './AppointmentForm': () => null,
@@ -557,7 +737,7 @@ const main = async () => {
     }).default
     const render = () => renderToStaticMarkup(React.createElement(Schedule))
     let html = render()
-    assert.ok(html.includes('Daily schedule'))
+    assert.ok(html.includes('Appointment calendar'))
     assert.ok(html.includes('Alex Rivera'))
     assert.ok(html.includes('Room 1'))
     assert.ok(html.includes('Chair 1'))
@@ -570,7 +750,7 @@ const main = async () => {
     uiState = { ...uiState, canCreate: false, canUpdate: false }
     assert.ok(!render().includes('Book appointment'))
     uiState = { ...uiState, appointments: [] }
-    assert.ok(render().includes('No appointments scheduled'))
+    assert.ok(render().includes('No appointments scheduled for this day'))
     uiState = { ...uiState, isLoading: true }
     assert.ok(render().includes('Loading appointments'))
     uiState = {

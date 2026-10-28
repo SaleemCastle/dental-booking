@@ -195,10 +195,13 @@ checks, and `npm run test:permissions` for catalog authorization checks.
 
 ## Appointment Workflow
 
-Calendar (`/?tab=calendar`) displays a daily schedule ordered by start time,
-with provider and status filters. Dates, time inputs, and displayed ranges use
-UTC to match the API's `date` filter. Overnight appointments show the end date;
-the daily list includes appointments that **start** on the selected date.
+Calendar (`/?tab=calendar`) provides day and Sunday-through-Saturday week
+views, with provider, room, chair, and status filters. Dates, time inputs,
+and displayed ranges use UTC to match the application's timezone and API
+`date` filter. All 24 hours are accessible in a scrollable calendar that opens
+at 07:00. Each view also fetches the preceding date so overnight appointments
+appear on every date they intersect. Overlapping bookings occupy separate
+columns, including cancelled or completed appointments retained in history.
 
 `src/services/appointments.ts` normalizes canonical numeric identifiers and
 display fields. Writes use canonical snake_case fields. Editing sends only
@@ -237,6 +240,30 @@ Patient selection additionally requires `patients.view`; treatment selection
 requires `treatments.view`. Booking can omit treatment and location. Provider
 choices use `GET /api/dentists`; rooms with nested chairs come from
 `GET /api/appointment-locations`. Selector failures preserve existing links.
+With `provider_availabilities.view` or the selected clinic's canonical admin
+role, selecting a provider reads `GET /api/dentists/{dentist}/availability`.
+Both calendar views shade working hours, breaks, and closed periods; dated
+exceptions replace recurring rules. An unconfigured provider is explicitly
+identified, while a configured empty schedule shades all dates unavailable.
+Users without availability access can still book with their appointment
+permissions. Appointment saves remain authoritative for conflict and
+working-hours validation; no working hours are inferred or written here.
+
+Selecting a calendar slot prefills its date, time, provider, and filtered
+room/chair in the booking form. Selecting an appointment opens the existing
+detail/edit/status workflow. Date arrows move exactly one day or seven days;
+Today selects the current UTC date, and week date headings open that day.
+Successful saves refresh affected day and week caches even when those views
+are unmounted. Refresh and retry recover failed list or availability reads;
+failed availability refreshes hide stale shading. Small screens scroll within
+the calendar while controls wrap within the workspace.
+
+Run `npm run test:appointments` for API, rule-display, layout, permissions,
+cache, and rendering checks. With a local app running on port 3000, run
+`npm run test:calendar:browser` for the intercepted-API calendar workflow,
+including mobile layout and availability errors. Override
+`APPOINTMENT_TEST_URL` to use another local port. These checks require Node
+22+ and Chrome/Edge/Chromium; they do not verify backend MySQL concurrency.
 
 Room changes clear the chair. Location changes submit both `room_id` and
 `chair_id`, including nulls when clearing a reservation. The location selector

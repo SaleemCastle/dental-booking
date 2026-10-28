@@ -139,7 +139,9 @@ const run = async () => {
             port = fs.readFileSync(portFile, 'utf8').split('\n')[0]
             break
         }
-        if (browser.exitCode !== null)
+        // On Windows the launcher can exit successfully before Chrome's
+        // debugging endpoint is ready.
+        if (browser.exitCode !== null && browser.exitCode !== 0)
             throw new Error(`Browser exited with ${browser.exitCode}`)
         await delay(100)
     }
@@ -207,7 +209,7 @@ const run = async () => {
                             actor === 'viewer'
                                 ? ['dashboard.view', 'appointments.view']
                                 : actor === 'admin'
-                                ? []
+                                ? ['*']
                                 : [
                                       'dashboard.view',
                                       'appointments.view',
@@ -215,6 +217,7 @@ const run = async () => {
                                       'appointments.update',
                                       'patients.view',
                                       'treatments.view',
+                                      'invoices.view',
                                   ],
                     }
                 else if (url.pathname === '/api/tenants')

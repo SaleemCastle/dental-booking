@@ -7,6 +7,8 @@ export type Permission =
     | 'appointments.create'
     | 'appointments.update'
     | 'appointments.delete'
+    | 'provider_availabilities.view'
+    | 'provider_availabilities.update'
     | 'patients.view'
     | 'patients.update'
     | 'patients.archive'
@@ -383,6 +385,8 @@ export const getUserPermissionSet = (user: AuthUser | null) => {
     const knownPermissions = new Set<Permission>([
         ...Object.values(rolePermissions).flat(),
         'clinical_notes.view',
+        'provider_availabilities.view',
+        'provider_availabilities.update',
         'dental_charts.view',
         'patient_documents.view',
         'patient_documents.create',
@@ -412,6 +416,22 @@ export const getUserPermissionSet = (user: AuthUser | null) => {
     })
 
     return permissions
+}
+
+export const getProviderAvailabilityPermissions = (user: AuthUser | null) => {
+    const permissions = getUserPermissionSet(user)
+    const clinicAdmin = Boolean(
+        user &&
+            'current_tenant_id' in user &&
+            user.roles?.some(
+                role => typeof role === 'object' && role?.slug === 'admin',
+            ),
+    )
+    return {
+        canView: clinicAdmin || permissions.has('provider_availabilities.view'),
+        canUpdate:
+            clinicAdmin || permissions.has('provider_availabilities.update'),
+    }
 }
 
 // Clinical-note writes deliberately bypass general permission and wildcard

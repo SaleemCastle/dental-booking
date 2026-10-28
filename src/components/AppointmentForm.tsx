@@ -30,18 +30,38 @@ import InputError from './InputError'
 const AppointmentForm = ({
     appointment,
     date,
+    initialStart,
+    initialDentistId,
+    initialRoomId,
+    initialChairId,
     onClose,
     onSave,
 }: {
     appointment: Appointment | null
     date: string
+    initialStart?: string
+    initialDentistId?: number
+    initialRoomId?: number
+    initialChairId?: number
     onClose: () => void
     onSave: (payload: Partial<AppointmentPayload>) => Promise<void>
 }) => {
     const { user, canView, canCreate, canUpdate } = useAppointmentPermissions()
-    const [values, setValues] = useState(() =>
-        getAppointmentFormValues(appointment, date),
-    )
+    const [values, setValues] = useState(() => ({
+        ...getAppointmentFormValues(appointment, date),
+        ...(!appointment && initialStart
+            ? { appointment_date_time: initialStart }
+            : {}),
+        ...(!appointment && initialDentistId
+            ? { dentist_id: String(initialDentistId) }
+            : {}),
+        ...(!appointment && initialRoomId
+            ? { room_id: String(initialRoomId) }
+            : {}),
+        ...(!appointment && initialChairId
+            ? { chair_id: String(initialChairId) }
+            : {}),
+    }))
     const [errors, setErrors] = useState<ApiFieldErrors>({})
     const [errorMessage, setErrorMessage] = useState('')
     const [saving, setSaving] = useState(false)

@@ -1,7 +1,11 @@
 import useSWR, { useSWRConfig } from 'swr'
 import { useAuthSession } from '../context/AuthSessionContext'
 import { ApiError } from '../lib/api'
-import { getUserPermissionSet } from '../lib/permissions'
+import {
+    getProviderAvailabilityPermissions,
+    getUserPermissionSet,
+} from '../lib/permissions'
+import { getWeekStart } from '../lib/appointment-calendar'
 import { sortAppointments } from '../lib/appointment-workflow'
 import {
     Appointment,
@@ -20,6 +24,8 @@ export const useAppointmentPermissions = () => {
         canView,
         canCreate: canView && permissions.has('appointments.create'),
         canUpdate: canView && permissions.has('appointments.update'),
+        canViewAvailability:
+            canView && getProviderAvailabilityPermissions(user).canView,
     }
 }
 export const useAppointments = (date: string) => {
@@ -51,7 +57,9 @@ export const useAppointmentMutationSync = (date?: string) => {
                 [
                     date,
                     saved.startsAt.slice(0, 10),
+                    saved.endsAt.slice(0, 10),
                     previous?.startsAt.slice(0, 10),
+                    previous?.endsAt.slice(0, 10),
                 ].filter(Boolean),
             ),
         )
@@ -74,6 +82,9 @@ export const useAppointmentMutationSync = (date?: string) => {
                     },
                     true,
                 ),
+            ),
+            ...Array.from(new Set(days.map(getWeekStart))).map(week =>
+                mutate(['appointment-week', user, week], undefined, true),
             ),
         ])
     }
