@@ -49,6 +49,7 @@ export type AppModule =
     | 'settings'
     | 'audit_logs'
     | 'user_management'
+    | 'reports'
 
 interface UserRole {
     name?: string
@@ -160,6 +161,12 @@ export const navigationModules: NavigationModule[] = [
         label: Tabs.Settings,
         href: { pathname: '/', query: { tab: 'settings' } },
         permissions: ['settings.view'],
+    },
+    {
+        id: 'reports',
+        label: Tabs.Reports,
+        href: { pathname: '/', query: { tab: 'reports' } },
+        permissions: [],
     },
     {
         id: 'audit_logs',
@@ -541,6 +548,10 @@ export const canAccessModule = (
     user: AuthUser | null,
     module: NavigationModule,
 ) => {
+    if (module.id === 'reports') {
+        const access = getReportingPermissions(user)
+        return access.appointments || access.billing
+    }
     if (module.id === 'audit_logs') return canViewAuditLogs(user)
     if (module.id === 'user_management') return canManageUsers(user)
     if (module.id === 'payment_information') {
@@ -584,6 +595,37 @@ export const getBillingPermissions = (user: AuthUser | null) => {
         canUpdateInvoice: write || allows('invoices.update'),
         canViewPayments: read || allows('payments.view'),
         canRecordPayment: write || allows('payments.create'),
+    }
+}
+
+// Reports inherit source read policies; reports.* never grants access.
+export const getReportingPermissions = (user: AuthUser | null) => {
+    const grants = user
+        ? extractUserPermissions(user).permissions
+        : new Set<string>()
+    const admin = Boolean(
+        user?.roles?.some(
+            role => typeof role === 'object' && role?.slug === 'admin',
+        ),
+    )
+    const allows = (permission: string) =>
+        admin ||
+        Array.from(grants as Set<string>).some(
+            value =>
+                value === permission ||
+                value === '*' ||
+                (value.endsWith('.*') &&
+                    permission.startsWith(value.slice(0, -1))) ||
+                (value.startsWith('*.') && permission.endsWith(value.slice(1))),
+        )
+    const appointments = allows('appointments.view')
+    const financial = getBillingPermissions(user)
+    return {
+        appointments,
+        providers: appointments,
+        treatments: appointments && allows('treatments.view'),
+        billing: financial.canViewInvoices && financial.canViewPayments,
+        capacity: appointments && allows('provider_availabilities.view'),
     }
 }
 

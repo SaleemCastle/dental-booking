@@ -88,6 +88,16 @@ Archive retains authenticated retrieval and cannot be undone in this UI. Removal
 
 Run `npm test` and `npm run build`. With a production server at port 3013, run `npm run test:patient-documents:browser` (Node 22+, Chrome/Edge, or `BROWSER_PATH`). Override `DOCUMENTS_TEST_URL` and `DOCUMENTS_TEST_API_URL` if needed. Browser checks intercept the API and never contact a live bucket; staging still needs an end-to-end smoke test against the configured provider.
 
+## Operational reporting
+
+Open **Reports** in the clinic sidebar (`/?tab=reports`). Reports use the authenticated clinic ID in `X-Tenant-Id`, source read permissions and the four `/api/reports/*` aggregate endpoints. Appointment read grants appointment/provider activity; treatment activity also needs treatment read. Billing requires both invoice and payment read (including Admin, Billing and Auditor policies). Capacity columns require availability read. `reports.*` grants no access.
+
+Filters accept inclusive UTC calendar dates (at most 366), and an optional canonical integer provider ID. Provider/treatment pages stay bounded to 25, 50 or 100 rows. API filter echoes and pagination are verified before displaying results. Results live only in component memory; filter/session changes cancel requests and hide previous results. Financial decimal strings are displayed per currency without summing or recalculating money in the browser. Metric definitions explain current-state status, planned duration, current schedule capacity, issue-date invoice cohorts and payment-date collections. Reports are not accounting snapshots, and this milestone does not provide detailed exports.
+
+Response fields and semantics were cross-checked with the backend `ReportController`, `ReportRequest`, `ReportingService`, `ApiResponse` and `ReportingApiTest`. `npm run test:reporting` checks the request contract, source permissions, UTC boundaries, decimal preservation and representative backend metric fixtures; it is included in `npm test`.
+
+Run `npm run build`. For browser checks, serve the app on port 3019 and run `npm run test:reporting:browser` with Node 22+ and Chrome/Edge (or `BROWSER_PATH`). Override `REPORTING_TEST_URL` and `REPORTING_TEST_API_URL` for other origins. Browser checks intercept all API traffic and cover request cancellation, permission changes, pagination, loading/error/empty states, multi-currency rendering and mobile overflow. A live staging API smoke test is separate from these mocked checks.
+
 ## Contributing
 
 Thank you for considering contributing to Breeze Next! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
