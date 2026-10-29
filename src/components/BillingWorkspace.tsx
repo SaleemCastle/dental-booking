@@ -36,6 +36,7 @@ import BillingFeedback from './BillingFeedback'
 import BillingPaymentForm from './BillingPaymentForm'
 import InvoiceForm from './InvoiceForm'
 import InvoicePaymentLinks from './InvoicePaymentLinks'
+import CommunicationHistory from './CommunicationHistory'
 import { isArchivedPatient } from './PatientRowDetails'
 
 const Status = ({ status }: { status: InvoiceStatus }) => (
@@ -885,6 +886,7 @@ export default function BillingWorkspace({ patient }: { patient?: Patient }) {
                                     invoiceId={invoice.id}
                                     revision={revision}
                                 />
+                                <CommunicationHistory key={`communications-${invoice.id}-${revision}`} invoiceId={invoice.id} />
                             </>
                         )}
                     </section>

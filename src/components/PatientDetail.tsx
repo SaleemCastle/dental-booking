@@ -5,6 +5,7 @@ import { PatientPayload } from '../services/patients'
 import PatientClinicalWorkspace from './PatientClinicalWorkspace'
 import PatientFollowUps from './PatientFollowUps'
 import BillingWorkspace from './BillingWorkspace'
+import PatientCommunicationContacts from './PatientCommunicationContacts'
 import { useAuthSession } from '../context/AuthSessionContext'
 import { getBillingPermissions } from '../lib/permissions'
 import { isArchivedPatient } from './PatientRowDetails'
@@ -54,8 +55,10 @@ type DetailTab =
     | 'Next Treatment'
     | 'Medical Record'
     | 'Billing'
+    | 'Communications'
 
 const detailTabs: DetailTab[] = [
+    'Communications',
     'Patient Information',
     'Appointment History',
     'Next Treatment',
@@ -654,6 +657,9 @@ const PatientDetail = ({
                         </div>
                     )}
 
+                    {activeTab === 'Communications' && !isLoading && !errorMessage && (
+                        <PatientCommunicationContacts key={patient.id} patientId={patient.id} canEdit={permissions.canEditDemographics && !archived} />
+                    )}
                     {activeTab === 'Appointment History' && (
                         <section className="rounded-lg border border-clinic-line bg-white p-5 shadow-sm sm:p-6">
                             <h2 className="text-base font-extrabold text-clinic-ink">

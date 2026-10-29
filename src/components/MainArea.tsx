@@ -7,6 +7,7 @@ import AppointmentSchedule from './AppointmentSchedule'
 import AuditLogViewer from './AuditLogViewer'
 import UserRoleManagement from './UserRoleManagement'
 import BillingWorkspace from './BillingWorkspace'
+import CommunicationSettings from './CommunicationSettings'
 import ReportingWorkspace from './ReportingWorkspace'
 import { PatientArchivedFilter, PatientPayload } from '../services/patients'
 
@@ -66,6 +67,8 @@ const MainArea = ({
 
     const renderTabDetailSection = (tab: string) => {
         switch (tab) {
+            case 'settings':
+                return <CommunicationSettings />
             case 'reports':
                 return <ReportingWorkspace />
             case 'dashboard':
