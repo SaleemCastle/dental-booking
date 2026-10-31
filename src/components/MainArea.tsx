@@ -8,6 +8,7 @@ import AuditLogViewer from './AuditLogViewer'
 import UserRoleManagement from './UserRoleManagement'
 import BillingWorkspace from './BillingWorkspace'
 import CommunicationSettings from './CommunicationSettings'
+import ClinicProfileSettings from './ClinicProfileSettings'
 import ReportingWorkspace from './ReportingWorkspace'
 import { PatientArchivedFilter, PatientPayload } from '../services/patients'
 
@@ -68,7 +69,7 @@ const MainArea = ({
     const renderTabDetailSection = (tab: string) => {
         switch (tab) {
             case 'settings':
-                return <CommunicationSettings />
+                return <div className="space-y-6 p-4 sm:p-6"><ClinicProfileSettings /><CommunicationSettings /></div>
             case 'reports':
                 return <ReportingWorkspace />
             case 'dashboard':

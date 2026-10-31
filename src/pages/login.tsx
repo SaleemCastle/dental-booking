@@ -17,7 +17,8 @@ const Login = () => {
 
     const { login } = useAuth({
         middleware: 'guest',
-        redirectIfAuthenticated: '/',
+        redirectIfAuthenticated:
+            router.pathname === '/platform/login' ? '/platform' : '/',
     })
 
     const [email, setEmail] = useState('')
@@ -42,13 +43,21 @@ const Login = () => {
     const submitForm = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault()
 
-        login({
-            email,
-            password,
-            remember: shouldRemember,
-            setErrors,
-            setStatus,
-        })
+        try {
+            await login({
+                email,
+                password,
+                remember: shouldRemember,
+                setErrors,
+                setStatus,
+            })
+        } catch (error) {
+            setStatus(
+                error instanceof Error
+                    ? error.message
+                    : 'Unable to sign in. Please try again.',
+            )
+        }
     }
 
     return (
@@ -60,6 +69,11 @@ const Login = () => {
                     </Link>
                 }>
                 {/* Session Status */}
+                {router.pathname === '/platform/login' && (
+                    <h1 className="mb-4 text-lg font-bold">
+                        Platform operator sign in
+                    </h1>
+                )}
                 <AuthSessionStatus className="mb-4" status={status} />
 
                 <form onSubmit={submitForm}>
