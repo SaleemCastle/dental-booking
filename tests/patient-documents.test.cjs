@@ -161,7 +161,7 @@ async function run() {
     assert.deepEqual(page.documents, [fixture])
     assert.equal(page.meta.lastPage, 3)
     assert.deepEqual(last.params, { status: 'archived', page: 2, per_page: 15 })
-    assert.equal(last.headers['X-Tenant-Id'], 37)
+    assert.equal(last.headers['X-Tenant-Id'], '37')
     response = { data: { data: { document: fixture }, success: true } }
     const file = new File(['PDF'], 'scan.pdf', { type: 'application/pdf' })
     assert.deepEqual(
@@ -193,6 +193,17 @@ async function run() {
         { tenantId: 37 },
     )
     assert.deepEqual([...last.data.keys()], ['file'])
+    const progress = []
+    await service.uploadPatientDocument(
+        4,
+        { file },
+        { tenantId: 37, onProgress: percent => progress.push(percent) },
+    )
+    last.onUploadProgress({ loaded: 5 })
+    last.onUploadProgress({ loaded: 5, total: 0 })
+    last.onUploadProgress({ loaded: 5, total: 10 })
+    last.onUploadProgress({ loaded: 15, total: 10 })
+    assert.deepEqual(progress, [50, 100])
     await service.getPatientDocument(4, 7, 37)
     assert.equal(last.url, '/api/patients/4/documents/7')
     await service.archivePatientDocument(4, 7, 37)
@@ -204,14 +215,17 @@ async function run() {
         data: new Blob(['PNG']),
         headers: { 'content-type': 'image/png' },
     }
+    const downloadController = new AbortController()
     const binary = await service.downloadPatientDocument(4, fixture, {
         tenantId: 37,
+        signal: downloadController.signal,
     })
     assert.equal(await binary.text(), 'PNG')
     assert.equal(binary.type, 'image/png')
     assert.equal(last.responseType, 'blob')
+    assert.equal(last.signal, downloadController.signal)
     assert.equal(last.url, '/api/patients/4/documents/7/download')
-    assert.equal(last.headers['X-Tenant-Id'], 37)
+    assert.equal(last.headers['X-Tenant-Id'], '37')
     response.headers['content-type'] = 'text/html'
     await assert.rejects(
         service.downloadPatientDocument(4, fixture, { tenantId: 37 }),

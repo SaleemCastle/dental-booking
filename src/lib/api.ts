@@ -121,11 +121,17 @@ export const http: AxiosInstance = Axios.create({
         Accept: 'application/json',
     },
     withCredentials: true,
+    withXSRFToken: true,
+    xsrfCookieName: 'XSRF-TOKEN',
+    xsrfHeaderName: 'X-XSRF-TOKEN',
 })
 
 http.interceptors.response.use(
     response => response,
     async error => {
+        if (Axios.isCancel(error)) {
+            throw new DOMException('Request cancelled.', 'AbortError')
+        }
         // Binary endpoints still return the standard JSON error envelope.
         // Decode before normalization so validation and session events survive.
         if (
@@ -162,6 +168,7 @@ const request = async <T>(
 
         return normalizeAxiosResponse<T>(response)
     } catch (error) {
+        if (error instanceof Error && error.name === 'AbortError') throw error
         throw normalizeAxiosError(error)
     }
 }
@@ -194,28 +201,23 @@ export const apiClient = {
 export const ensureCsrfCookie = () =>
     apiClient.get<null>('/sanctum/csrf-cookie')
 
-// Axios 0.21 requires CancelToken; keep that compatibility inside the client.
 export const apiRequestWithSignal = async <T>(
     config: AxiosRequestConfig,
     signal?: AbortSignal,
 ): Promise<ApiResponse<T>> => {
+    const requestSignal = signal ?? config.signal
     const aborted = () => new DOMException('Request cancelled.', 'AbortError')
-    if (signal?.aborted) throw aborted()
-    const source = Axios.CancelToken.source()
-    const cancel = () => source.cancel('Request cancelled.')
-    signal?.addEventListener('abort', cancel, { once: true })
+    if (requestSignal?.aborted) throw aborted()
     try {
         const response = await apiClient.request<T>({
             ...config,
-            cancelToken: source.token,
+            signal: requestSignal,
         })
-        if (signal?.aborted) throw aborted()
+        if (requestSignal?.aborted) throw aborted()
         return response
     } catch (error) {
-        if (signal?.aborted) throw aborted()
+        if (requestSignal?.aborted) throw aborted()
         throw error
-    } finally {
-        signal?.removeEventListener('abort', cancel)
     }
 }
 

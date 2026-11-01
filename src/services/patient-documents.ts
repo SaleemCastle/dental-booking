@@ -87,7 +87,7 @@ export const uploadPatientDocument = async (
             data,
             headers: headers(options.tenantId),
             onUploadProgress: event => {
-                if (event.total > 0)
+                if (event.total != null && event.total > 0)
                     options.onProgress?.(
                         Math.min(
                             100,
@@ -143,19 +143,15 @@ export const downloadPatientDocument = async (
 ): Promise<Blob> => {
     // Use the shared authenticated transport, but preserve binary responses.
     // apiRequestWithSignal normalizes JSON, so the raw HTTP client is used here.
-    const Axios = (await import('axios')).default
-    const source = Axios.CancelToken.source()
-    const cancel = () => source.cancel('Request cancelled.')
     if (options.signal?.aborted)
         throw new DOMException('Request cancelled.', 'AbortError')
-    options.signal?.addEventListener('abort', cancel, { once: true })
     try {
         const response = await http.get<Blob>(
             `${base(patientId)}/${document.id}/download`,
             {
                 headers: headers(options.tenantId),
                 responseType: 'blob',
-                cancelToken: source.token,
+                signal: options.signal,
             },
         )
         if (options.signal?.aborted)
@@ -169,7 +165,9 @@ export const downloadPatientDocument = async (
                 'The server returned an unexpected file type. Refresh the document list and try again.',
             )
         return new Blob([response.data], { type: mime })
-    } finally {
-        options.signal?.removeEventListener('abort', cancel)
+    } catch (error) {
+        if (options.signal?.aborted)
+            throw new DOMException('Request cancelled.', 'AbortError')
+        throw error
     }
 }
