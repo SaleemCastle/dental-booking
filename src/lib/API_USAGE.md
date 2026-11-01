@@ -27,6 +27,11 @@ Forms should render field messages from `ApiError.errors`. Paginated services
 should preserve envelope `meta` on their typed return shape. Call
 `ensureCsrfCookie()` before Sanctum-protected mutating auth requests.
 
+The client enables credentials and XSRF tokens for Sanctum SPA authentication,
+using the `XSRF-TOKEN` cookie and `X-XSRF-TOKEN` header. Pass cancellation signals
+in request config (`{ signal }`) or through `apiRequestWithSignal`. Cancelled
+requests throw `AbortError` without emitting session events.
+
 The shared client emits `api:unauthorized` on `401`; authenticated flows listen
 for that event, clear session state, and route users back to `/login`.
 
@@ -491,9 +496,10 @@ a note explains that new records may shift offset-based pages. Filtering never
 loads the full history. Detail reads use the audit ID, not the resource ID.
 
 Audit reads use component-local state, outside the shared SWR cache. Each request
-has an AbortController bridged to Axios 0.21 CancelToken through the existing API
-client. Obsolete/cancelled replies cannot replace new results or errors. User/key
-checks suppress previous data immediately, and pending work is cancelled on
+passes its AbortController signal directly to Axios through the existing API
+client. Cancellation surfaces as `AbortError`. Obsolete/cancelled replies cannot
+replace new results or errors. User/key checks suppress previous data immediately,
+and pending work is cancelled on
 filter changes, detail close, account/access changes, logout, and unmount. Payloads
 are not persisted to browser storage, service workers, analytics, or error reports.
 Server responses provide Cache-Control: private, no-store.

@@ -1,4 +1,3 @@
-import Axios from 'axios'
 import { ApiError, apiClient, PaginationMeta } from '../lib/api'
 import type { AuthUser } from '../lib/auth-session'
 import { canViewAuditLogs } from '../lib/permissions'
@@ -59,22 +58,15 @@ const readAudit = async <T>(
     const aborted = () =>
         new DOMException('Audit request cancelled.', 'AbortError')
     if (signal?.aborted) throw aborted()
-    // Axios 0.21 predates AbortSignal support. Bridge it to the existing client's
-    // cancellation token instead of creating a second HTTP/authentication client.
-    const source = Axios.CancelToken.source()
-    const cancel = () => source.cancel('Audit request cancelled.')
-    signal?.addEventListener('abort', cancel, { once: true })
     try {
         const response = await apiClient.get<T>(path, {
-            cancelToken: source.token,
+            signal,
         })
         if (signal?.aborted) throw aborted()
         return response
     } catch (error) {
         if (signal?.aborted) throw aborted()
         throw error
-    } finally {
-        signal?.removeEventListener('abort', cancel)
     }
 }
 export const getAuditLogs = async (

@@ -63,6 +63,8 @@ const onRequest = async ({ method, url, payload, headers }) => {
                       ],
                   },
               }
+    if (url.pathname === '/api/dentists') return { data: { dentists: [] } }
+    if (url.pathname === '/api/appointment-locations') return { data: { rooms: [] } }
     if (url.pathname === '/api/treatments')
         return {
             data: {

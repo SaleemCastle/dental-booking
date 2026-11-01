@@ -9,7 +9,21 @@ import {
 
 export interface ClinicSession {
     user: AuthUser
-    currentTenant: CurrentClinic
+    currentTenant: CurrentClinic | null
+}
+
+// Account identity only. Platform authority is checked by the platform API,
+// never inferred from clinic roles or a user response flag.
+export const getPlatformIdentitySession = async (): Promise<ClinicSession> => {
+    const user = unwrapAuthUser(await apiClient.getData<AuthUser>('/api/user'))
+    if (!user || !Number.isSafeInteger(user.id) || user.id <= 0)
+        throw new ApiError({
+            statusCode: 0,
+            code: 'INVALID_ACCOUNT_SESSION',
+            message: 'Unable to verify your account.',
+            errors: {},
+        })
+    return { user, currentTenant: null }
 }
 
 export const getClinicSession = async (): Promise<ClinicSession> => {

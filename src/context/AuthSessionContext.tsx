@@ -23,7 +23,11 @@ import {
 } from '../lib/auth-session'
 import { clearPatients } from '../store/reducers/patients/patientSlice'
 import SessionRecovery from '../components/SessionRecovery'
-import { ClinicSession, getClinicSession } from '../services/session'
+import {
+    ClinicSession,
+    getClinicSession,
+    getPlatformIdentitySession,
+} from '../services/session'
 
 interface AuthSessionContextValue {
     user: AuthUser | null
@@ -85,6 +89,7 @@ const clearBrowserSessionState = () => {
 
 export const AuthSessionProvider = ({ children }: { children: ReactNode }) => {
     const router = useRouter()
+    const platformWorkflow = router.pathname.startsWith('/platform')
     // These account workflows do not require clinic membership.
     const accountWorkflow = [
         '/forgot-password',
@@ -94,11 +99,15 @@ export const AuthSessionProvider = ({ children }: { children: ReactNode }) => {
     const { data: session, error, mutate } = useSWR<
         ClinicSession | null,
         ApiError
-    >('/api/user', getClinicSession, {
-        shouldRetryOnError: false,
-        revalidateOnFocus: true,
-        revalidateOnReconnect: true,
-    })
+    >(
+        platformWorkflow ? 'platform:identity' : '/api/user',
+        platformWorkflow ? getPlatformIdentitySession : getClinicSession,
+        {
+            shouldRetryOnError: false,
+            revalidateOnFocus: true,
+            revalidateOnReconnect: true,
+        },
+    )
 
     const status = resolveSessionStatus(
         session === undefined ? undefined : session?.user ?? null,
@@ -157,8 +166,9 @@ export const AuthSessionProvider = ({ children }: { children: ReactNode }) => {
                     currentTenant?.id,
                     user?.roles,
                     user?.permissions,
+                    platformWorkflow,
                 ])}>
-                {status === 'error' && !accountWorkflow ? (
+                {status === 'error' && !accountWorkflow && !platformWorkflow ? (
                     <SessionRecovery />
                 ) : (
                     children

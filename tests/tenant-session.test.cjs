@@ -119,7 +119,9 @@ const { getClinicSession } = compile('services/session.ts', {
         },
     )
     global.window = new EventTarget()
-    window.localStorage = window.sessionStorage = { removeItem() {} }
+    const cleared = []
+    window.localStorage = { removeItem: key => cleared.push(['local', key]) }
+    window.sessionStorage = { removeItem: key => cleared.push(['session', key]) }
     let unauthorized = 0,
         forbidden = 0
     window.addEventListener(unauthorizedSessionEvent, () => unauthorized++)
@@ -153,6 +155,15 @@ const { getClinicSession } = compile('services/session.ts', {
     )
     await rejectRequest('/api/patients', 401)
     assert.equal(unauthorized, 1)
+    assert.deepEqual(cleared, [['local', 'auth:user'], ['session', 'auth:user']])
+    const cancelled = new AbortController()
+    cancelled.abort()
+    await assert.rejects(
+        http.get('/api/patients', { signal: cancelled.signal }),
+        { name: 'AbortError' },
+    )
+    assert.equal(unauthorized, 1, 'Cancellation must not clear the session')
+    assert.equal(forbidden, 1, 'Cancellation must not refresh the session')
     delete global.window
     console.log('Clinic session contract and central API error tests passed.')
 })().catch(error => {

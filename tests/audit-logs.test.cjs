@@ -220,7 +220,7 @@ async function main() {
         requestId: 'read-789',
     })
     const [url, config] = requests.pop()
-    assert.ok(config.cancelToken)
+    assert.equal(config.signal, undefined)
     assert.ok(url.includes('%2B05%3A30'), 'Offset plus sign is encoded')
     assert.deepEqual(
         Object.fromEntries(new URL(url, 'http://test').searchParams),
@@ -257,11 +257,12 @@ async function main() {
     })
     const controller = new AbortController()
     const pending = service.getAuditLog(admin, 12, controller.signal)
-    const token = requests.at(-1)[1].cancelToken
+    const signal = requests.at(-1)[1].signal
+    assert.equal(signal, controller.signal)
     controller.abort()
     release()
     await assert.rejects(pending, error => error.name === 'AbortError')
-    assert.ok(token.reason, 'AbortSignal cancels Axios 0.21 requests')
+    assert.ok(signal.aborted, 'Native AbortSignal reaches the HTTP client')
     waitForRequest = null
     response = { data: {} }
     await assert.rejects(
