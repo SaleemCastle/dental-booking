@@ -17,6 +17,8 @@ import {
 import { formatModuleLabel } from '../utils'
 import ActionButton from './ActionButton'
 import Searchbar from './Searchbar'
+import UserAvatar from './UserAvatar'
+import { getUserAvatarUrl } from '../lib/user-avatar'
 
 const WorkspaceHeader = ({
     currentTab,
@@ -46,13 +48,6 @@ const WorkspaceHeader = ({
     const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false)
     const displayName = getAuthUserDisplayName(user)
     const displayEmail = getAuthUserEmail(user)
-    const initials = displayName
-        .split(/\s+/)
-        .filter(Boolean)
-        .slice(0, 2)
-        .map(part => part.charAt(0))
-        .join('')
-        .toUpperCase()
 
     return (
         <header className="relative z-20 flex h-16 items-center border-b border-clinic-line bg-white px-4 sm:px-6">
@@ -141,9 +136,10 @@ const WorkspaceHeader = ({
                         aria-label="Account menu"
                         className="flex items-center gap-2 rounded-full p-1.5 text-left transition-colors hover:bg-clinic-canvas sm:gap-3"
                         onClick={() => setIsAccountMenuOpen(isOpen => !isOpen)}>
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-clinic-sky text-xs font-bold text-clinic-blue">
-                            {initials || 'A'}
-                        </span>
+                        <UserAvatar
+                            name={displayName}
+                            photoUrl={getUserAvatarUrl(user)}
+                        />
                         <span className="hidden min-w-0 sm:block">
                             <span className="block max-w-36 truncate text-xs font-bold text-clinic-ink">
                                 {displayName}

@@ -114,6 +114,8 @@ Run `npm run build`. For browser checks, serve the app on port 3019 and run `npm
 
 ## Contributing
 
+Clinic-side messaging behavior, API expectations and verification commands are documented in [Clinic messaging](CLINIC_MESSAGING.md).
+
 Thank you for considering contributing to Breeze Next! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
 
 ## Code of Conduct

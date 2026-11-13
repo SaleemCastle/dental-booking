@@ -77,7 +77,6 @@ assert.deepEqual(
         'calendar',
         'patient_list',
         'treatments',
-        'messages',
         'payment_information',
         'settings',
         'reports',
@@ -88,7 +87,7 @@ assert.deepEqual(
 
 assert.deepEqual(
     getAuthorizedNavigationModules(receptionist).map(module => module.id),
-    ['dashboard', 'calendar', 'patient_list', 'messages', 'reports'],
+    ['dashboard', 'calendar', 'patient_list', 'reports'],
 )
 
 assert.deepEqual(
@@ -98,7 +97,7 @@ assert.deepEqual(
 
 assert.deepEqual(
     getAuthorizedNavigationModules(custom).map(module => module.id),
-    ['patient_list', 'messages'],
+    ['patient_list'],
 )
 assert.deepEqual(
     getAuthorizedNavigationModules(singularRole).map(module => module.id),
@@ -107,7 +106,6 @@ assert.deepEqual(
         'calendar',
         'patient_list',
         'treatments',
-        'messages',
         'payment_information',
         'settings',
         'reports',
@@ -129,7 +127,6 @@ assert.deepEqual(
         'dashboard',
         'calendar',
         'patient_list',
-        'messages',
         'payment_information',
         'settings',
     ],

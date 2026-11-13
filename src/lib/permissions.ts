@@ -32,6 +32,10 @@ export type Permission =
     | 'treatments.update'
     | 'treatments.delete'
     | 'messages.view'
+    | 'messaging.internal.send'
+    | 'messaging.internal.receive'
+    | 'messaging.patient.send'
+    | 'messaging.preferences.manage'
     | 'payments.view'
     | 'payments.create'
     | 'payment_links.view'
@@ -552,10 +556,30 @@ export const canManageUsers = (user: AuthUser | null) =>
             ),
     )
 
+// Platform messaging uses exact clinic grants; CRUD wildcards and legacy
+// navigation defaults must never authorize conversations or consent evidence.
+export const getMessagingPermissions = (user: AuthUser | null) => {
+    const roles = getNamedValues(user?.roles, ['slug'])
+    const clinic = Boolean(user?.current_tenant_id && roles.length && !roles.includes('patient'))
+    const grants = user ? extractUserPermissions(user).permissions : new Set<string>()
+    const staff = clinic && !roles.includes('admin')
+    return {
+        admin: clinic && roles.includes('admin'),
+        internalSend: clinic && grants.has('messaging.internal.send'),
+        internalReceive: clinic && grants.has('messaging.internal.receive'),
+        patientSend: staff && grants.has('messaging.patient.send'),
+        consentManage: staff && grants.has('messaging.preferences.manage'),
+    }
+}
+
 export const canAccessModule = (
     user: AuthUser | null,
     module: NavigationModule,
 ) => {
+    if (module.id === 'messages') {
+        const access = getMessagingPermissions(user)
+        return access.internalSend || access.internalReceive || access.patientSend
+    }
     if (module.id === 'reports') {
         const access = getReportingPermissions(user)
         return access.appointments || access.billing

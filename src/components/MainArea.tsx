@@ -10,6 +10,7 @@ import BillingWorkspace from './BillingWorkspace'
 import CommunicationSettings from './CommunicationSettings'
 import ClinicProfileSettings from './ClinicProfileSettings'
 import ReportingWorkspace from './ReportingWorkspace'
+import MessagingWorkspace from './MessagingWorkspace'
 import { PatientArchivedFilter, PatientPayload } from '../services/patients'
 
 const MainArea = ({
@@ -68,6 +69,8 @@ const MainArea = ({
 
     const renderTabDetailSection = (tab: string) => {
         switch (tab) {
+            case 'messages':
+                return <MessagingWorkspace />
             case 'settings':
                 return <div className="space-y-6 p-4 sm:p-6"><ClinicProfileSettings /><CommunicationSettings /></div>
             case 'reports':
@@ -135,6 +138,7 @@ const MainArea = ({
                 'user_management',
                 'payment_information',
                 'reports',
+                'messages',
                 ].includes(currentTab) && (
                     <CurrentTabDetail
                         currentTab={currentTab}
