@@ -451,6 +451,7 @@ async function main() {
         './TreatmentPlanForm': { __esModule: true, default: () => null },
         './TreatmentPlanItemForm': { __esModule: true, default: () => null },
         './TreatmentPlanOrderForm': { __esModule: true, default: () => null },
+        './TreatmentPlanItemCoverageEstimate': { __esModule: true, default: () => null },
         './AppointmentDialog': { __esModule: true, default: () => null },
     }).default
     const panelMarkup = () =>
@@ -465,6 +466,26 @@ async function main() {
     denied = true
     assert.doesNotMatch(panelMarkup(), /Visible plan snapshot/)
     assert.match(panelMarkup(), /unavailable for this patient or clinic access/)
+    const CoverageEstimate = compile('components/TreatmentPlanItemCoverageEstimate.tsx', {
+        '../lib/api': { normalizeAxiosError: error => error },
+        '../lib/permissions': permissions,
+        '../services/insurance-estimates': { createTreatmentPlanItemEstimate: async () => ({ estimate: {} }) },
+        '../lib/billing': { displayMoney: value => value },
+        './AppointmentDialog': { __esModule: true, default: () => null, appointmentButtonClass: 'button', appointmentInputClass: 'input', appointmentPrimaryClass: 'primary' },
+    }).default
+    assert.equal(renderToStaticMarkup(React.createElement(CoverageEstimate, { user: { permissions: ['patients.view', 'treatment_plans.view'] }, planId: 8, item: item(1) })), '')
+    assert.match(renderToStaticMarkup(React.createElement(CoverageEstimate, { user: { permissions: ['patients.view', 'treatment_plans.view', 'insurance_estimates.create'] }, planId: 8, item: item(1) })), /Request provisional coverage estimate/)
+    const estimateCalls = []
+    const estimateService = compile('services/insurance-estimates.ts', {
+        '../lib/api': { apiClient: {
+            getData: async (...args) => { estimateCalls.push(['get', ...args]); return [] },
+            postData: async (...args) => { estimateCalls.push(['post', ...args]); return { estimate: {} } },
+        } },
+    })
+    await estimateService.listTreatmentPlanEstimates(4, 8)
+    assert.deepEqual(estimateCalls[0], ['get', '/api/patients/4/insurance-estimates', { params: { treatment_plan_id: 8, latest_only: true, per_page: 100 } }])
+    await estimateService.createTreatmentPlanItemEstimate(8, 3, { service_date: '2030-04-01', currency: 'JMD' })
+    assert.deepEqual(estimateCalls[1], ['post', '/api/treatment-plans/8/items/3/insurance-estimates', { service_date: '2030-04-01', currency: 'JMD' }])
     console.log(
         'Treatment plans: clinical roles, decimal totals, workflows, context validation, fixed-history ordering, partial payloads and typed API contract passed.',
     )

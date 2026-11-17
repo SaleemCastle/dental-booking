@@ -44,6 +44,7 @@ import { isArchivedPatient } from './PatientRowDetails'
 import TreatmentPlanForm from './TreatmentPlanForm'
 import TreatmentPlanItemForm from './TreatmentPlanItemForm'
 import TreatmentPlanOrderForm from './TreatmentPlanOrderForm'
+import TreatmentPlanItemCoverageEstimate from './TreatmentPlanItemCoverageEstimate'
 import AppointmentDialog, {
     appointmentButtonClass as buttonClass,
     appointmentInputClass as inputClass,
@@ -632,6 +633,7 @@ const PatientTreatmentPlans = ({
                                                             metadata.data,
                                                         )}
                                                     </p>
+                                                    <TreatmentPlanItemCoverageEstimate user={user} planId={plan.id} item={item} />
                                                     <div className="flex flex-wrap gap-x-5 gap-y-2 text-xs text-clinic-muted">
                                                         <span>
                                                             Priority:{' '}

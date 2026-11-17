@@ -499,6 +499,11 @@ async function run() {
         (await dashboard.getDashboardSummary()).metrics[3].value,
         'Restricted',
     )
+    const invoiceSource = fs.readFileSync(path.join(__dirname, '../src/components/InvoiceForm.tsx'), 'utf8')
+    assert.match(invoiceSource, /Provisional insurance coverage preview/)
+    assert.match(invoiceSource, /do not confirm payment or change invoice balances/)
+    assert.match(invoiceSource, /coverage estimate is for one plan item; quantity is not extrapolated/)
+    assert.match(invoiceSource, /stale_reason_codes/)
     console.log(
         'Billing tests passed: money boundaries, lifecycle guards, clinic permissions, safe payloads, pagination, complete currency balances and dashboard null handling.',
     )

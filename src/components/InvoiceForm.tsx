@@ -23,6 +23,7 @@ import {
     getTreatmentPlans,
 } from '../services/treatment-plans'
 import { getActiveTreatments } from '../services/treatments'
+import { listTreatmentPlanEstimates } from '../services/insurance-estimates'
 import AppointmentDialog, {
     appointmentButtonClass as button,
     appointmentInputClass as input,
@@ -107,6 +108,13 @@ export default function InvoiceForm({
         },
         { shouldRetryOnError: false },
     )
+    const coverageEstimates = useSWR(
+        !invoice && planId && Number(patientId) > 0 && grants.has('insurance_estimates.view')
+            ? ['billing-coverage-estimates', user, patientId, planId]
+            : null,
+        () => listTreatmentPlanEstimates(Number(patientId), Number(planId)),
+        { shouldRetryOnError: false },
+    )
     const planItems =
         !plan.error && plan.data?.status !== 'cancelled'
             ? plan.data?.items?.filter(item => item.status !== 'cancelled') ??
@@ -139,6 +147,13 @@ export default function InvoiceForm({
             ? null
             : sum + minor * quantity
     }, 0)
+    const grossForLine = (line: Line) => {
+        const unitMinor = moneyMinor(price(line) ?? '')
+        const quantity = Number(line.quantity)
+        return unitMinor === null || !Number.isSafeInteger(quantity) || quantity < 1
+            ? null
+            : decimalMoney(unitMinor * quantity)
+    }
     const save = async (event: FormEvent) => {
         event.preventDefault()
         if (!canWrite || !currentTenant || saving.current) return
@@ -677,6 +692,28 @@ export default function InvoiceForm({
                                           currency || 'Currency',
                                       )}
                             </p>
+                            {!invoice && planId && grants.has('insurance_estimates.view') && (
+                                <section aria-label="Provisional insurance coverage preview" className="space-y-2 rounded border border-clinic-line p-4">
+                                    <h3 className="text-sm font-bold">Provisional insurance coverage preview</h3>
+                                    <p className="text-xs text-clinic-muted">Informational snapshots only; they do not confirm payment or change invoice balances.</p>
+                                    {coverageEstimates.error && <BillingFeedback message="Coverage estimates are unavailable." />}
+                                    {lines.filter(line => line.source === 'plan').map(line => {
+                                        const estimate = (coverageEstimates.data ?? [])
+                                            .filter(value => value.treatment_plan_item_id === Number(line.id))
+                                            .sort((a, b) => b.id - a.id)[0]
+                                        const source = planItems.find(value => String(value.id) === line.id)
+                                        const coverage = !estimate ? 'No snapshot; request one from treatment planning.' : estimate.status === 'resolved'
+                                            ? 'provisional insurer ' + displayMoney(estimate.insurer_amount, estimate.currency) + ', provisional patient ' + displayMoney(estimate.patient_amount, estimate.currency)
+                                            : estimate.status + ' (' + ((estimate.calculation.reason_codes ?? []).join(', ') || estimate.status) + ')'
+                                        return <p key={line.key} className="text-sm">
+                                            {source?.treatment_name ?? 'Treatment plan item'} gross total {grossForLine(line) ? displayMoney(grossForLine(line)!, currency || 'Currency') : 'unavailable'}: {coverage}{Number(line.quantity) > 1 ? ' (coverage estimate is for one plan item; quantity is not extrapolated)' : ''}
+                                            {estimate && currency && estimate.currency !== currency ? ' | currency differs from invoice' : ''}
+                                            {estimate?.superseded ? ' | superseded snapshot' : ''}
+                                            {estimate?.stale ? ' | stale (' + estimate.stale_reason_codes.join(', ') + ')' : ''}
+                                        </p>
+                                    })}
+                                </section>
+                            )}
                         </>
                     )}
                 </fieldset>

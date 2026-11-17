@@ -18,6 +18,8 @@ export type Permission =
     | 'treatment_plans.view'
     | 'treatment_plans.create'
     | 'treatment_plans.update'
+    | 'insurance_estimates.view'
+    | 'insurance_estimates.create'
     | 'clinical_notes.view'
     | 'patient_documents.view'
     | 'patient_documents.create'
