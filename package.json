@@ -43,7 +43,8 @@
         "start": "next start",
         "lint": "next lint",
         "lint:fix": "next lint --fix",
-        "test:communications": "node tests/communications.test.cjs"
+        "test:communications": "node tests/communications.test.cjs && node tests/messaging.test.cjs",
+        "test:messaging:browser": "node tests/messaging.browser.cjs"
     },
     "dependencies": {
         "@headlessui/react": "^1.4.2",
