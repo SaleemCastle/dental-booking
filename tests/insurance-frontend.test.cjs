@@ -133,10 +133,30 @@ async function run() {
     assert.doesNotMatch(payment, /insurance|insurer|remittance/i)
     assert.doesNotMatch(payment, /allocation|refund/i)
     const permissions = read('src/lib/permissions.ts')
-    assert.doesNotMatch(permissions, /insurance_(?!estimates)/)
+    assert.match(permissions, /getInsurancePermissions/)
+    assert.match(permissions, /extractUserPermissions\(user\)\.permissions/)
+    assert.match(permissions, /patientView: patients && insuranceView/)
+    assert.match(permissions, /obligationsApprove: patients && invoiceView && has\('insurance_obligations\.approve'\)/)
+    assert.match(permissions, /reportsView: patients && has\('insurance_reports\.view'\)/)
     assert.doesNotMatch(read('src/services/reporting.ts'), /insurance/i)
 
-    console.log('Insurance frontend compatibility checks passed: 21 assertions.')
+    const service = read('src/services/insurance.ts')
+    assert.match(service, /'X-Tenant-Id': options\.tenantId/)
+    assert.match(service, /\/api\/patients\/\$\{patientId\}\/insurance-associations/)
+    assert.match(service, /Number\.isSafeInteger\(value\)/)
+
+    const patientWorkspace = read('src/components/PatientInsuranceWorkspace.tsx')
+    assert.match(patientWorkspace, /no access to another patient/)
+    assert.match(patientWorkspace, /not a confirmed benefit, insurer liability, payment or receivable/)
+    assert.match(patientWorkspace, /does not send a request/)
+    assert.match(patientWorkspace, /does not post|not a posted payment/i)
+    assert.doesNotMatch(patientWorkspace, /insuranceApi\.patient\.evidence\.link|insuranceApi\.authorizations\.linkEvidence/)
+    const insuranceWorkspace = read('src/components/InsuranceWorkspace.tsx')
+    assert.match(insuranceWorkspace, /not cash received and does not post financial activity/)
+    assert.match(insuranceWorkspace, /does not confirm a bank deposit or create a payment/)
+    assert.doesNotMatch(insuranceWorkspace, /insuranceApi\.(payments|allocations|refunds)|Settlement v2/i)
+
+    console.log('Insurance frontend compatibility checks passed: 34 assertions.')
 }
 
 run().catch(error => {

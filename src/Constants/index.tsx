@@ -9,6 +9,7 @@ export const sidebarTabs = [
     'Audit Logs',
     'User & Role Management',
     'Reports',
+    'Insurance',
 ]
 export enum Tabs {
     Dashboard = 'Dashboard',
@@ -21,6 +22,7 @@ export enum Tabs {
     AuditLogs = 'Audit Logs',
     UserManagement = 'User & Role Management',
     Reports = 'Reports',
+    Insurance = 'Insurance',
 }
 
 export const patientDataHeadings = [

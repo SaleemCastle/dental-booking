@@ -20,6 +20,42 @@ export type Permission =
     | 'treatment_plans.update'
     | 'insurance_estimates.view'
     | 'insurance_estimates.create'
+    | 'patient_insurance.view'
+    | 'patient_insurance.manage'
+    | 'patient_insurance.reveal'
+    | 'insurance_catalog.view'
+    | 'insurance_catalog.manage'
+    | 'insurance_catalog.review'
+    | 'insurance_catalog.publish'
+    | 'insurance_documents.view'
+    | 'insurance_documents.upload'
+    | 'insurance_documents.link'
+    | 'insurance_documents.tenant_view'
+    | 'insurance_documents.tenant_upload'
+    | 'document_holds.manage'
+    | 'document_quarantine.manage'
+    | 'insurance_claims.view'
+    | 'insurance_claims.prepare'
+    | 'insurance_claims.submit'
+    | 'insurance_claims.responses.view'
+    | 'insurance_claims.responses.record'
+    | 'insurance_claims.appeals.view'
+    | 'insurance_claims.appeals.manage'
+    | 'insurance_claims.corrections.prepare'
+    | 'insurance_prior_authorizations.view'
+    | 'insurance_prior_authorizations.manage'
+    | 'insurance_prior_authorizations.decide'
+    | 'insurance_prior_authorizations.evidence'
+    | 'insurance_remittances.view'
+    | 'insurance_remittances.record'
+    | 'insurance_remittances.correct'
+    | 'insurance_receipts.view'
+    | 'insurance_receipts.record'
+    | 'insurance_receipts.verify'
+    | 'insurance_obligations.view'
+    | 'insurance_obligations.propose'
+    | 'insurance_obligations.approve'
+    | 'insurance_reports.view'
     | 'clinical_notes.view'
     | 'patient_documents.view'
     | 'patient_documents.create'
@@ -60,6 +96,7 @@ export type AppModule =
     | 'audit_logs'
     | 'user_management'
     | 'reports'
+    | 'insurance'
 
 interface UserRole {
     name?: string
@@ -176,6 +213,12 @@ export const navigationModules: NavigationModule[] = [
         id: 'reports',
         label: Tabs.Reports,
         href: { pathname: '/', query: { tab: 'reports' } },
+        permissions: [],
+    },
+    {
+        id: 'insurance',
+        label: Tabs.Insurance,
+        href: { pathname: '/', query: { tab: 'insurance' } },
         permissions: [],
     },
     {
@@ -582,6 +625,10 @@ export const canAccessModule = (
         const access = getMessagingPermissions(user)
         return access.internalSend || access.internalReceive || access.patientSend
     }
+    if (module.id === 'insurance') {
+        const access = getInsurancePermissions(user)
+        return Object.values(access).some(value => value === true)
+    }
     if (module.id === 'reports') {
         const access = getReportingPermissions(user)
         return access.appointments || access.billing
@@ -598,6 +645,55 @@ export const canAccessModule = (
     const permissions = getUserPermissionSet(user)
 
     return module.permissions.every(permission => permissions.has(permission))
+}
+
+// Insurance permissions are intentionally exact. The backend does not accept
+// admin shortcuts or wildcard grants for these endpoints, so this must read
+// the raw clinic grant set without the general UI wildcard expansion.
+export const getInsurancePermissions = (user: AuthUser | null) => {
+    const raw = user ? extractUserPermissions(user).permissions as Set<string> : new Set<string>()
+    const has = (permission: string) => raw.has(permission)
+    const patients = has('patients.view')
+    const insuranceView = has('patient_insurance.view')
+    const catalogView = has('insurance_catalog.view')
+    const claimView = has('insurance_claims.view')
+    const priorAuthorizationView = has('insurance_prior_authorizations.view')
+    const invoiceView = has('invoices.view')
+    return {
+        has,
+        patientView: patients && insuranceView,
+        patientManage: patients && insuranceView && has('patient_insurance.manage'),
+        patientReveal: patients && insuranceView && has('patient_insurance.reveal'),
+        estimateView: patients && has('insurance_estimates.view'),
+        estimateCreate: patients && has('treatment_plans.view') && has('insurance_estimates.create'),
+        catalogView,
+        catalogManage: catalogView && has('insurance_catalog.manage'),
+        catalogReview: catalogView && has('insurance_catalog.review'),
+        catalogPublish: catalogView && has('insurance_catalog.publish'),
+        patientDocumentsView: patients && has('insurance_documents.view'),
+        claimsView: patients && claimView,
+        claimsPrepare: patients && has('insurance_claims.prepare'),
+        claimsSubmit: patients && claimView && has('insurance_claims.submit'),
+        claimResponsesView: patients && has('insurance_claims.responses.view'),
+        claimResponsesRecord: patients && has('insurance_claims.responses.record'),
+        claimAppealsView: patients && has('insurance_claims.appeals.view'),
+        claimAppealsManage: patients && has('insurance_claims.appeals.manage'),
+        claimCorrectionsPrepare: patients && claimView && has('insurance_claims.prepare') && has('insurance_claims.corrections.prepare'),
+        priorAuthorizationsView: patients && priorAuthorizationView,
+        priorAuthorizationsManage: patients && priorAuthorizationView && has('insurance_prior_authorizations.manage'),
+        priorAuthorizationsDecide: patients && priorAuthorizationView && has('insurance_prior_authorizations.decide'),
+        priorAuthorizationEvidenceView: patients && priorAuthorizationView && has('insurance_prior_authorizations.evidence') && has('insurance_documents.view'),
+        remittancesView: patients && has('insurance_remittances.view'),
+        remittancesRecord: patients && has('insurance_remittances.record'),
+        remittancesCorrect: patients && has('insurance_remittances.correct'),
+        receiptsView: has('insurance_receipts.view'),
+        receiptsRecord: has('insurance_receipts.record'),
+        receiptsVerify: has('insurance_receipts.verify'),
+        obligationsView: patients && invoiceView && has('insurance_obligations.view'),
+        obligationsPropose: patients && invoiceView && has('insurance_obligations.propose'),
+        obligationsApprove: patients && invoiceView && has('insurance_obligations.approve'),
+        reportsView: patients && has('insurance_reports.view'),
+    }
 }
 
 export const getBillingPermissions = (user: AuthUser | null) => {

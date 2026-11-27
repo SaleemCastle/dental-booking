@@ -11,6 +11,7 @@ import CommunicationSettings from './CommunicationSettings'
 import ClinicProfileSettings from './ClinicProfileSettings'
 import ReportingWorkspace from './ReportingWorkspace'
 import MessagingWorkspace from './MessagingWorkspace'
+import InsuranceWorkspace from './InsuranceWorkspace'
 import { PatientArchivedFilter, PatientPayload } from '../services/patients'
 
 const MainArea = ({
@@ -89,6 +90,8 @@ const MainArea = ({
                 return <UserRoleManagement />
             case 'payment_information':
                 return <BillingWorkspace />
+            case 'insurance':
+                return <InsuranceWorkspace />
             case 'patient_list':
                 return (
                     <PatientList
@@ -137,6 +140,7 @@ const MainArea = ({
                 'audit_logs',
                 'user_management',
                 'payment_information',
+                'insurance',
                 'reports',
                 'messages',
                 ].includes(currentTab) && (
