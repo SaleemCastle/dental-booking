@@ -8,6 +8,8 @@ import BillingWorkspace from './BillingWorkspace'
 import PatientCommunicationContacts from './PatientCommunicationContacts'
 import { useAuthSession } from '../context/AuthSessionContext'
 import { getBillingPermissions } from '../lib/permissions'
+import { getInsurancePermissions } from '../lib/permissions'
+import PatientInsuranceWorkspace from './PatientInsuranceWorkspace'
 import { isArchivedPatient } from './PatientRowDetails'
 
 interface PatientDetailProps {
@@ -56,6 +58,7 @@ type DetailTab =
     | 'Medical Record'
     | 'Billing'
     | 'Communications'
+    | 'Insurance'
 
 const detailTabs: DetailTab[] = [
     'Communications',
@@ -151,7 +154,12 @@ const PatientDetail = ({
 }: PatientDetailProps) => {
     const { user } = useAuthSession()
     const billingAccess = getBillingPermissions(user)
-    const visibleTabs = Object.values(billingAccess).some(Boolean) ? [...detailTabs, 'Billing' as DetailTab] : detailTabs
+    const insuranceAccess = getInsurancePermissions(user)
+    const visibleTabs = [
+        ...detailTabs,
+        ...(Object.values(billingAccess).some(Boolean) ? ['Billing' as DetailTab] : []),
+        ...(insuranceAccess.patientView ? ['Insurance' as DetailTab] : []),
+    ]
     const [activeTab, setActiveTab] = useState<DetailTab>('Patient Information')
     const [isEditing, setIsEditing] = useState(false)
     const [editValues, setEditValues] = useState<PatientEditValues | null>(null)
@@ -692,6 +700,9 @@ const PatientDetail = ({
 
                     {activeTab === 'Billing' && !isLoading && !errorMessage && (
                         <BillingWorkspace key={`billing-${patient.id}`} patient={patient} />
+                    )}
+                    {activeTab === 'Insurance' && !isLoading && !errorMessage && insuranceAccess.patientView && (
+                        <PatientInsuranceWorkspace key={`insurance-${patient.id}`} patient={patient} />
                     )}
                     {activeTab === 'Medical Record' && (
                         <div className="space-y-5">

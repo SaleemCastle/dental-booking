@@ -32,6 +32,7 @@ const getIcons = (tab: Tabs, active: boolean) => {
             return <IoSettings className={iconClass} />
         case Tabs.AuditLogs:
         case Tabs.UserManagement:
+        case Tabs.Insurance:
             return <FiShield className={iconClass} />
     }
 }

@@ -1,44 +1,42 @@
-# P4-M7 Insurance v1 frontend acceptance
+# P4 Insurance frontend implementation and acceptance
 
-## Scope and backend contract
+## Contract revision
 
-Reviewed frontend base `main` at `cd97596` (P4-M3 estimate workflow already merged). Backend contracts were read from `SaleemCastle/dental-booking-api` main snapshot `64afadb426d97774595040003bdf981cddfac19a`. The backend QA report is PR [#71](https://github.com/SaleemCastle/dental-booking-api/pull/71), whose checked-in acceptance report is blob `71127b4c0a8acb42aa36d83fb1f0cf1fe4c7f8d9`; it records M6 PR #70 merge `55d6b48` and says PostgreSQL application tests remain outstanding. The backend's OpenAPI and Postman artifacts are maintained in that repository; feature contracts are summarized in its `docs/insurance-v1-feature-coverage.md` and individual workflow documents.
+This work is based on frontend base commit `e39d1c049967fc8a732cac99fedb0e0b6d2eaf9e` and backend `SaleemCastle/dental-booking-api` main revision `f49ed2b97352bb9efdbff6d2f16562d25d780b59` (OpenAPI root blob `f58c9c6a1a8482849e756100359bff15bbdf33dd`). The backend's M7 QA review is [PR #71](https://github.com/SaleemCastle/dental-booking-api/pull/71). Workflow OpenAPI artifacts at that revision include patient insurance (`8c28e195f7ad9ad0e82b0401a2147cdb0eb36e86`), benefits (`26d88b3356d5e2bf16cd04214d7e5a95e8a40c52`), evidence (`f8943d28b2df275ca73392b51e9565eb4451728f`), claims (`e27779cce6087ccb3ded312b305f1fb73ec739d3`), remittances (`a0dac13fc48542b0de71169a29d5290f89c83569`), receipts (`d16fc310ee3f1765c1f65faff6b34d363db76b2c`), obligations (`a7208c3c4368a5cdfce4f776c04a783bea7b7134`), and catalog (`e2e8a8c8d83a98dc89ce497ac1357a913493824f`).
 
-## Frontend compatibility findings
+## Implemented frontend behavior
 
-The frontend contains a P4-M3 provisional estimate flow only. It calls:
+- Added a clinic Insurance navigation workspace and patient Insurance tab. Requests send the selected `X-Tenant-Id`; patient workflows use patient-scoped routes and selected association IDs.
+- Added patient association and policy revision forms, masked policy history, audited reveal controls when exact `patient_insurance.reveal` is granted, and manual eligibility/benefit observation forms. The association relationship captures self/spouse/child/other; the API has no separate dependent endpoint.
+- Added patient-scoped claim draft/line/readiness/submission/correction flows, response history and additional-information requests, appeals, and prior-authorization drafts/requests/decisions/history. Staff-entered channels and provenance are labeled as observations; they do not transmit to insurers.
+- Added provisional estimate history and authorized clean insurance evidence metadata. No protected URL, upload, or evidence-link action is exposed because backend evidence upload/link activation is disabled pending scanner controls.
+- Added clinic lists for insurer catalog, remittance advice, nonposting receipts, insurer-obligation proposals and aggregate reports, plus receipt entry and obligation approval where exact permissions are present.
+- Insurance permission decisions use exact clinic permission grants, without wildcard/admin UI shortcuts. The backend remains authoritative for endpoint denial.
+- The UI states that estimates and insurer observations are unconfirmed and do not post cash, payments, receivables, patient credits, or benefit balances. No insurer integration or Settlement v2 control is present.
 
-- `GET /api/patients/{patient}/insurance-estimates?treatment_plan_id={plan}&latest_only=true&per_page=100`
-- `POST /api/treatment-plans/{plan}/items/{item}/insurance-estimates`
+## Contract and safety gaps
 
-These match `docs/insurance-estimates.md`. The request requires explicit service date and three-letter currency; optional association and benefit observation IDs are passed through. The visible flow requires `patients.view`, `treatment_plans.view`, and `insurance_estimates.create`; the invoice draft preview requires `insurance_estimates.view`. Estimate amounts are labeled provisional, unresolved/stale/superseded/currency differences are shown, and estimates are excluded from invoice write payloads. UI text says estimates do not confirm insurer acceptance or payment and do not post payment or receivable amounts.
+This implementation is **not complete frontend acceptance**. The patient view does not yet provide a safe tenant-scoped selector for invoice items and patient/association lines. Accordingly, obligation proposal creation and remittance advice creation/correction are not offered; the API requires linked patient, association, invoice, or advice-line IDs and we do not accept arbitrary cross-context IDs. Receipt verification is not yet actionable from a selected receipt detail (receipt list/create are present). Catalog version editing/review/publication controls are also not implemented. These are UI coverage gaps, not claims that the backend endpoints are unavailable.
 
-No frontend client, screen, feature flag, or navigation entry was found for patient policies/evidence, eligibility checks, benefit observations, claims/responses, prior authorizations, appeals, remittance advice, insurer receipt observations, insurer obligations, or aggregate insurance reporting. Those backend contracts cannot be accepted by frontend tests in this repository. The existing reporting client supports clinic operational and billing reports only. Existing invoice payments are staff-entered settled payments; the payment method type contains no insurer option. No Settlement v2 activation, insurer allocation, refund, or insurer payment-posting UI is exposed in the reviewed billing client.
+Evidence uploads and links are contractually unavailable while activation is disabled. The frontend cannot prove backend tenant/patient isolation, private document authorization, permission denial, or live API error envelopes without an available backend environment and browser session. The browser suite is not run in this change.
 
-Authentication and clinic context are selected by the existing session provider. The estimate client uses the authenticated API session and patient-scoped URLs, consistent with existing treatment-plan calls. The focused checks verify the estimate route and permission gate, but do not establish backend tenant isolation or API authorization; the backend QA report requires hosted PostgreSQL tests for cross-tenant and patient IDOR cases.
+## Dependencies and checks
 
-## Checks
-
-Dependencies were already installed and matched `package.json` (`npm ls --depth=0`, exit 0); no install was needed and `package-lock.json` was not changed. The focused frontend test covers the estimate paths/payloads, estimate permission gating, required input constraints, nonposting language, and the absence of insurer payment/reporting/Settlement v2 operations in current clients.
-
-Final checks on this branch:
+Dependencies were already installed; no package dependency or lockfile change was needed.
 
 | Command | Result |
 | --- | --- |
-| `npm run test:insurance` | Exit 0; 21 focused assertions passed |
-| `npm test` | Exit 0; all 23 Node test files passed |
+| `npm run test:insurance` | Exit 0; 34 focused assertions passed |
 | `npx tsc --noEmit` | Exit 0 |
 | `npm run lint` | Exit 0; 0 ESLint warnings or errors |
-| `npm run build` | Exit 0; optimized Next.js production build completed and generated 13 static pages |
-| `git diff --check` | Exit 0 |
+| `npm run build` | Exit 0; optimized production build generated 13 static pages |
+| `git diff --check` | Pending final diff |
 
-The build logged an outdated Browserslist database notice, webpack cache snapshot warnings, and the existing legacy Redux wrapper notice. These did not fail the build. Browser acceptance against a running API was not run; the focused suite is an isolated client contract/source check.
+## Release risks and status
 
-## Remaining release-QA risks and status
+- Hosted PostgreSQL backend application and migration tests, tenant/patient IDOR tests, and permission-denial tests remain required as stated in PR #71.
+- Live frontend/API browser acceptance has not been run. Current focused tests include source-level contract, tenant header, exact permission gate, validation and nonposting assertions; they do not test a real API.
+- Remittance and obligation creation, receipt verification, catalog lifecycle, direct-link authorization, and protected document behavior need focused follow-up UI coverage against the backend.
+- Keep P4-M7 open until frontend gaps are reviewed and the required hosted PostgreSQL backend evidence passes.
 
-- There is no frontend/API consumer for the backend M1-M2 and M4-M6 insurance workflows listed above, so their loading, empty, validation, permission-denial, tenant/patient isolation, and error states remain unverified here.
-- The focused frontend checks are contract and source-level checks; they do not exercise a live merged backend or browser flow.
-- Backend hosted PostgreSQL API/security and migration checks remain required. PR #71 reports that earlier API tests could not reach assertions on SQLite and the hosted workflow did not run application jobs.
-- This frontend evidence does not complete P4-M7. Keep the ticket open until the frontend gaps and required hosted PostgreSQL evidence are reviewed and accepted.
-
-**Frontend acceptance: incomplete.** This PR verifies the implemented estimate slice and records missing frontend consumers and release-QA dependencies. No backend code, frontend product flow, or Settlement v2 behavior is added.
+**Frontend acceptance: incomplete.** This branch adds supported patient workflows and safe clinic-level read/limited write views, and records remaining UI/API acceptance gaps. Do not merge as acceptance-complete until those gaps and required backend evidence are resolved.
